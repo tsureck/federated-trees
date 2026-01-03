@@ -27,6 +27,9 @@ def load_datasets(_dataset_name: str) -> list[Dataset]:
     transform_cifar10 = transforms.Compose([transforms.ToTensor(),
                                             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
+    original_train_data = None
+    original_test_data = None
+
     if _dataset_name == constants.DatasetNames.MNIST:
         files_exist = os.path.exists(os.path.join(constants.Paths.DATASET, _dataset_name))
         # files_exist = os.path.exists(_dataset_name) in constants.Paths.DATASET
@@ -41,6 +44,15 @@ def load_datasets(_dataset_name: str) -> list[Dataset]:
             trainset = datasets.MNIST(constants.Paths.DATASET, download=True, train=True, transform=transform_mnist)
 
             testset = datasets.MNIST(constants.Paths.DATASET, download=True, train=False, transform=transform_mnist)
+
+        # TODO: Improve this
+        original_train_data = trainset.data.clone()
+        original_train_labels = trainset.targets.clone()
+        original_train_data = (original_train_data, original_train_labels)
+
+        original_test_data = testset.data.clone()
+        original_test_labels = testset.targets.clone()
+        original_test_data = (original_test_data, original_test_labels)
 
     elif _dataset_name == constants.DatasetNames.F_MNIST:
         files_exist = os.path.exists(os.path.join(constants.Paths.DATASET, _dataset_name))
@@ -78,4 +90,4 @@ def load_datasets(_dataset_name: str) -> list[Dataset]:
         print("Invalid dataset name. Please enter a valid dataset name.")
         sys.exit()
 
-    return [trainset, testset]
+    return [trainset, testset, original_train_data, original_test_data]

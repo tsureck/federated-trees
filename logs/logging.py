@@ -22,16 +22,34 @@ def write_logs(loss_and_accuracy: List[any], file_name: str) -> None:
 
     def save_as_pkl(_loss_and_accuracy: List[any], _file_name: str) -> None:
         """Save the loss and accuracy data to a binary file"""
+        import os
         _file_name = _file_name + constants.FileExtesions.PKL
-
+        print(f"PKL Path: {_file_name}")
+        pkl_path_list = _file_name.split('/')
+        pkl_dir_path = ""
+        for path_elem in pkl_path_list[:-1]:
+            pkl_dir_path += path_elem + "/"
+        print(f"PKL directory Path: {pkl_dir_path}")
+        if not os.path.exists(pkl_dir_path):
+            print(f"Creating PKL direcdirectory Path: {pkl_dir_path}")
+            os.makedirs(pkl_dir_path)
         # Save to a binary file
         with open(_file_name, "wb") as file:
             pickle.dump(loss_and_accuracy, file)
 
     def save_as_csv(_loss_and_accuracy: List[any], _file_name: str) -> None:
         """Save the loss and accuracy data to a CSV file"""
+        import os
         _file_name = _file_name + constants.FileExtesions.CSV
-
+        print(f"CSV Path: {_file_name}")
+        csv_path_list = _file_name.split('/')
+        csv_dir_path = ""
+        for path_elem in csv_path_list[:-1]:
+            csv_dir_path += path_elem + "/"
+        print(f"CSV directory Path: {csv_dir_path}")
+        if not os.path.exists(csv_dir_path):
+            print(f"Creating CSV direcdirectory Path: {csv_dir_path}")
+            os.makedirs(csv_dir_path)
         # Save to a CSV file
         with open(file_name, "w", newline="") as file:
             writer = csv.writer(file)

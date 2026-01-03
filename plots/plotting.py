@@ -264,6 +264,7 @@ def configure_and_save_plot(_plt, _x_label, _y_label, _title, _file_path, legend
     :param legend_hadles: The legend handles to be displayed.
     :return: None
     """
+    import os
     _plt.xlabel(_x_label)
     _plt.ylabel(_y_label)
     _plt.legend(handles=legend_hadles, loc='best', fontsize=15)
@@ -271,6 +272,15 @@ def configure_and_save_plot(_plt, _x_label, _y_label, _title, _file_path, legend
 
     # Save the plot as a high-quality PNG
     png_path = f"{_file_path}.png"
+    print(f"PNG Path: {png_path}")
+    png_path_list = png_path.split('/')
+    png_dir_path = ""
+    for path_elem in png_path_list[:-1]:
+        png_dir_path += path_elem + "/"
+    print(f"PNG directory Path: {png_dir_path}")
+    if not os.path.exists(png_dir_path):
+        print(f"Creating PNG directory Path: {png_dir_path}")
+        os.makedirs(png_dir_path)
     _plt.savefig(png_path, dpi=300)  # Increase DPI for higher resolution
 
     # Save the plot as a PDF

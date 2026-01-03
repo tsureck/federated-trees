@@ -12,11 +12,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-DEVICE = torch.device("cpu")  # Try "cuda" to train on GPU
-print(
-    f"Training on {DEVICE} using PyTorch {torch.__version__}"
-)
-
 
 class SimpleModel(nn.Module):
     def __init__(self):
@@ -138,11 +133,13 @@ def train(_model: nn.Module, _dataloader: DataLoader, epochs: int, verbose=False
     :param verbose: Whether to print training progress
     :return: None
     """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # criterion = nn.BCEWithLogitsLoss()
     # criterion = nn.BCELoss()
     criterion = nn.CrossEntropyLoss()
     _optimizer = torch.optim.Adam(_model.parameters(), lr=0.001)
     _model.train()
+    _model.to(device)
     for epoch in range(epochs):
         correct, total, epoch_loss = 0, 0, 0.0
         # this loop is added because _dataset is dictionary like and torch.from_numpy() expects only Dataloader types.
@@ -157,11 +154,8 @@ def train(_model: nn.Module, _dataloader: DataLoader, epochs: int, verbose=False
                 break
 
             # inputs = _x.unsqueeze(1).float()  # Ensure images are in the right format and shape to feed to the model
-            inputs = _x
-            labels = _y
-
-            inputs = inputs.to(DEVICE)  # move inputs to device
-            labels = labels.to(DEVICE)  # move labels to device
+            inputs = _x.to(device, non_blocking=True)
+            labels = _y.to(device, non_blocking=True).long()
 
             # Clear gradients for each batch
             _optimizer.zero_grad()
@@ -194,16 +188,18 @@ def test(_model: nn.Module, _dataset: DataLoader) -> Tuple[float, float]:
     :param _dataset: The test dataset
     :return: Tuple of loss and accuracy
     """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # criterion = nn.BCEWithLogitsLoss()
     criterion = nn.CrossEntropyLoss()
     correct, total, loss = 0, 0, 0.0
     _model.eval()
+    _model.to(device)
     with torch.no_grad():
         # this loop is added because _dataset is dictionary like and torch.from_numpy() expects only Dataloader types
         for _x, _y in _dataset:
             # inputs = _x.unsqueeze(1).float()   # Ensure images are in the right format and shape to feed to the model
-            inputs = _x
-            labels = _y
+            inputs = _x.to(device, non_blocking=True)
+            labels = _y.to(device, non_blocking=True).long()  # CE needs Long targets
 
             # forward pass
             outputs = _model(inputs)

@@ -16,13 +16,7 @@ from torch.utils.data import Dataset, Subset
 
 import constants
 from data.utils import convert_dataset_to_loader
-from models.model import train, test, SimpleModel, CNNMNIST, CNNCIFAR10
-
-DEVICE = torch.device("cpu")  # Try "cuda" to train on GPU
-print(
-    f"Training on {DEVICE} using PyTorch {torch.__version__}"
-)
-
+from models.model import train, test, CNNMNIST, CNNCIFAR10
 
 class Client:
     def __init__(self, client_id, model, epochs, mini_batch_size, local_trainset, testset):
@@ -70,6 +64,13 @@ class Client:
         loss, accuracy = test(self.model, self.testloader)
         return float(loss), float(accuracy)
 
+    def restore_original_data(self, _original_trainset, _original_testset):
+        """ Restore the original data and labels of the client """
+        self.local_trainset.dataset.data = _original_trainset[0].detach().clone()
+        self.local_trainset.dataset.targets = _original_trainset[1].detach().clone()
+
+        self.testset.dataset.data = _original_testset[0].detach().clone()
+        self.testset.dataset.targets = _original_testset[1].detach().clone()
 
 def set_parameters(_model, parameters: OrderedDict):
     """ Set the model weights and biases """
@@ -108,16 +109,22 @@ def client_fn(client_id: int, num_local_epochs: int, mini_batch_size: int, datas
     :param _dataset: train and test datasets
     :returns Client: A Client instance.
     """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Load model
-    # _model = SimpleModel().to(DEVICE)
+    # _model = SimpleModel().to(device)
     if dataset_name == constants.DatasetNames.CIFAR_10:
-        _model = CNNCIFAR10().to(DEVICE)
+        _model = CNNCIFAR10().to(device)
     else:
-        _model = CNNMNIST().to(DEVICE)
+        _model = CNNMNIST().to(device)
 
     # Upacking _dataset (which contains a subset of the complete training set (e.g., MNIST) and the global test set)
     local_trainset, testset = _dataset
 
     # Create a  single Flower client representing a single organization
-    return Client(client_id=client_id, model=_model, epochs=num_local_epochs, mini_batch_size=mini_batch_size,
+    client = Client(client_id=client_id, model=_model, epochs=num_local_epochs, mini_batch_size=mini_batch_size,
                   local_trainset=local_trainset, testset=testset)
+
+    if constants.ModelSettings.LOAD_MODEL_STATE:
+        client.model.load_state_dict(torch.load(constants.Paths.MODEL_SAVE_PATH))
+
+    return client

@@ -104,7 +104,7 @@ def train_client_models(all_clients, sampled_client_ids, servers: List[Server], 
 
     print("Training client models...")
     # Apply drift to the clients
-    if drift.is_drift:
+    if True:  # TODO: correct this drift.is_drift:
         # Sample data from the drift applied datasets
         apply_drift(all_clients, drift)
     else:

@@ -13,6 +13,7 @@ class FedAvg:
     def __init__(self):
         pass
 
+    # TODO: Adjust here for different aggregation strategies or detecting malicious clients
     def aggregate_models(self, model, client_model_params_list):
         """ Aggregate the client models to the global model and returns the new aggregated model"""
         model_params = model.state_dict()

@@ -17,6 +17,9 @@ class Paths:
 
     # path related to saved logs
     LOG_SAVE_PATH = './logs/saved_logs/'
+    
+    # saved model path
+    MODEL_SAVE_PATH = './root_server_model_20_rounds_CIFAR.pth'
 
 
 # File extensions
@@ -116,14 +119,14 @@ class Plots:
 
 # Drift patterns
 class DriftPatterns:
-    ABRUPT = 'abrupt'
-    GRADUAL = 'gradual'
-    INCREMENTAL = 'incremental'
-    REOCCURRING = 'reoccurring'
-    INCREMENTAL_ABRUPT = 'incre-abrupt'
-    ABRUPT_REOCURRING = 'abrupt-reoc'
-    INCREMENTAL_REOCCURRING = 'incr-reoc'
-    OUT_OF_CONTROL = 'out-of-control'
+    ABRUPT = 'abrupt'  # Implemented
+    GRADUAL = 'gradual'  # Implemented
+    INCREMENTAL = 'incremental'  # Implemented
+    # REOCCURRING = 'reoccurring'
+    # INCREMENTAL_ABRUPT = 'incre-abrupt'
+    # ABRUPT_REOCURRING = 'abrupt-reoc'
+    GRADUAL_REOCCURRING = 'grad-reoc'  # Implemented
+    # OUT_OF_CONTROL = 'out-of-control'
 
 
 # Drift creation methods
@@ -143,3 +146,7 @@ class Logs:
     SERVER_LVL_AVG_LOG = 'server_level_avg_log'
     SERVER_OVERALL_AVG_LOG = 'server_overall_avg_log'
 
+
+class ModelSettings:
+    SAVE_MODEL_STATE = False  # Whether to save the model state after training
+    LOAD_MODEL_STATE = True  # Whether to load the model state before training
