@@ -19,7 +19,7 @@ class Paths:
     LOG_SAVE_PATH = './logs/saved_logs/'
     
     # saved model path
-    MODEL_SAVE_PATH = './root_server_model_20_rounds_CIFAR.pth'
+    MODEL_SAVE_PATH = './root_server_model_20_rounds_MNIST.pth'
 
 
 # File extensions
@@ -146,6 +146,10 @@ class Logs:
     SERVER_LVL_AVG_LOG = 'server_level_avg_log'
     SERVER_OVERALL_AVG_LOG = 'server_overall_avg_log'
 
+class UpdateDataSettings:
+    SERVER_MODEL_STORE_EVERY_ROUNDS = 10  # Number of rounds after which the global server model is stored in the update record
+    DATA_SAVE_PATH = './fl_runs'  # Path to save the update records
+    SAVE_DATASET_UPDATES = True  # Whether to save the dataset updates or not
 
 class ModelSettings:
     SAVE_MODEL_STATE = False  # Whether to save the model state after training

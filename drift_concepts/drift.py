@@ -9,6 +9,8 @@ import bisect
 import copy
 import math
 from typing import Dict, List
+import os
+from matplotlib.pyplot import imsave
 
 import numpy as np
 import torch
@@ -96,11 +98,12 @@ class Drift:
         # Track original class counts for accurate cumulative swapping
         self.original_class_counts = {}
 
-    def rotate_images(self, clients: List[Client]) -> List[Client]:
+    def rotate_images(self, clients: List[Client], plot_save_path: str) -> List[Client]:
         """
         Apply rotation drift to the images of the client dataset. Both the rotation angle and the number of images to
         rotate increase linearly with the number of federated training rounds.
         :param clients: List of Client objects
+        :param plot_save_path: Path to save plots
         :return: List of Client objects with the rotated images in their datasets
         """
 
@@ -150,6 +153,10 @@ class Drift:
         rotation_angle = transition_progress * self.max_rotation
         self._applied_drift_logging.append(rotation_angle)
 
+        if self.drift_start_round >= self.drift_end_round:
+            return clients
+
+        first_drifted_client = None
         # Check if there are drifted clients
         if self.drifted_client_indices:
             # Identify the first drifted client to process the dataset and duplicate a copy (not the reference)
@@ -170,12 +177,10 @@ class Drift:
                 clients[idx].local_trainset.dataset = first_drifted_client.local_trainset.dataset
                 clients[idx].testset.dataset = first_drifted_client.testset.dataset
 
-        # TODO: Improve this
-        from matplotlib.pyplot import imsave
-        import os
-        path = "./plots/drifted_images/rotation_tests/" + f"drift_{self.drift_pattern}_{str(self.max_rotation)}/"
-        os.makedirs(path, exist_ok=True)
-        imsave(f"{path}image_in_round_{self.current_round}.png", first_drifted_client.local_trainset.dataset.data[0].numpy())
+        if first_drifted_client:
+            if first_drifted_client.local_trainset:
+                os.makedirs(plot_save_path, exist_ok=True)
+                imsave(f"{plot_save_path}image_in_round_{self.current_round}.png", first_drifted_client.local_trainset.dataset.data[0].numpy())
         return clients
 
     def swap_labels(self, clients: List[Client]) -> List[Client]:
@@ -385,7 +390,7 @@ def drift_fn(num_client_instances: int, num_training_rounds: int, drift_specs: D
                  classes_to_rotate=drift_specs.get('classes_to_rotate', []))
 
 
-def apply_drift(clients: List[Client], drift: Drift) -> List[Client]:
+def apply_drift(clients: List[Client], drift: Drift, plot_save_path: str) -> List[Client]:
     """
     Apply drift to the training data of the clients.
     :param clients: List of Client objects
@@ -399,7 +404,7 @@ def apply_drift(clients: List[Client], drift: Drift) -> List[Client]:
         case constants.DriftCreationMethods.LABEL_SWAPPING:
             return drift.swap_labels(clients)
         case constants.DriftCreationMethods.ROTATION:
-            return drift.rotate_images(clients)
+            return drift.rotate_images(clients, plot_save_path)
         case _:
             print("Drift method not recognized. No drift applied.")
 

@@ -27,3 +27,6 @@ logs/saved_logs/
 plots/saved_plots/
 data/MNIST
 *.pth
+fl_runs/
+*.tar*
+cifar-10-batches-py/

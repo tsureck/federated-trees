@@ -5,14 +5,17 @@ Author: Nisal Hemadasa
 Date: 19-10-2024
 Version: 1.0
 """
+import os
 import random
 import time
 from typing import List
+import uuid
 
 import torch
 
 import constants
 from data.dataset_loader import load_datasets
+from data.update_data import ClientUpdateRecord, ModelSpec
 from data.utils import split_dataset, convert_dataset_to_loader
 from drift_concepts.drift import drift_fn, modify_drifted_client_groups
 from federated_network.client import client_fn, Client, client_initial_training
@@ -89,7 +92,7 @@ class FederatedNetwork:
         """ Sample clients from the client pool and returns a list of client instances """
         return random.sample(self.clients, int(self.client_select_fraction * len(self.clients)))
 
-    def run_simulation(self, file_save_path=None, log_save_path=None) -> None:
+    def run_simulation(self, update_save_path=None, plot_save_path=None, log_save_path=None, base_global_model_uuid: str = None) -> None:
         """
         Run the simulation for the specified number of rounds
         :param file_save_path: Path to save the logs
@@ -99,6 +102,7 @@ class FederatedNetwork:
         clients_loss_and_accuracy = []  # Store the loss and accuracy of the all the clients at each round
         sampled_clients_in_each_round = []  # To keep track of the client IDs sampled in each round
         server_loss_and_accuracy = []  # Store the loss and accuracy at each level of the server hierarchy
+        base_global_model_round = 0
 
         # Start the timer
         start_time = time.time()
@@ -168,8 +172,18 @@ class FederatedNetwork:
                                                                  sampled_client_ids,
                                                                  self.server_hierarchy[server_depth],
                                                                  self.drift,
-                                                                 self.simulation_parameters)
+                                                                 self.simulation_parameters,
+                                                                 plot_save_path)
             clients_loss_and_accuracy.append(round_client_loss_and_accuracy)
+
+            if constants.UpdateDataSettings.SAVE_DATASET_UPDATES:
+                self.save_client_updates(
+                    _round,
+                    update_save_path,
+                    base_global_model_round,
+                    base_global_model_uuid,
+                    round_client_loss_and_accuracy,
+                )
 
             if self._original_testset is not None and self._original_trainset is not None:
                 for client in self.clients:
@@ -184,10 +198,10 @@ class FederatedNetwork:
         print(f"Runtime: {end_time - start_time} seconds")
 
         # Plot the performance of the clients
-        plot_client_performance_vs_rounds(clients_loss_and_accuracy, file_save_path=file_save_path)
+        plot_client_performance_vs_rounds(clients_loss_and_accuracy, file_save_path=plot_save_path)
 
         # Plot the performance of the server hierarchy
-        plot_server_performance_vs_rounds(server_loss_and_accuracy, file_save_path=file_save_path)
+        plot_server_performance_vs_rounds(server_loss_and_accuracy, file_save_path=plot_save_path)
 
         # Split the client performance to drifted and non-drifted clients
         if self.drift.is_synchronous:
@@ -234,9 +248,62 @@ class FederatedNetwork:
         # Plot average performances
         plot_client_avg_performance_vs_rounds([non_drifted_client_averages, drifted_client_averages],
                                               self.drift.is_synchronous,
-                                              file_save_path=file_save_path)
-        plot_server_lvl_avg_performance_vs_rounds(server_level_averages, file_save_path=file_save_path)
-        plot_server_overall_avg_performance_vs_rounds(server_overall_averages, file_save_path=file_save_path)
+                                              file_save_path=plot_save_path)
+        plot_server_lvl_avg_performance_vs_rounds(server_level_averages, file_save_path=plot_save_path)
+        plot_server_overall_avg_performance_vs_rounds(server_overall_averages, file_save_path=plot_save_path)
+
+    def save_client_updates(
+        self,
+        _round: int,
+        file_save_path: str,
+        base_global_model_round: int,
+        base_global_model_uuid: uuid.UUID,
+        round_client_loss_and_accuracy: list,
+    ) -> None:
+        """
+        Save the client updates to the specified path.
+        :param path: Path to save the client updates
+        :return: None
+        """
+        count = len(round_client_loss_and_accuracy)
+        mean_loss = sum(loss for loss, _ in round_client_loss_and_accuracy) / count
+        mean_accuracy = sum(acc for _, acc in round_client_loss_and_accuracy) / count
+
+        for idx, client in enumerate(self.clients):
+            malicious_drift = False
+            if idx in self.drift.drifted_client_indices:
+                if self.drift.drift_method == constants.DriftCreationMethods.LABEL_SWAPPING and \
+                    self.drift.drift_start_round <= _round <= self.drift.drift_end_round:
+                    malicious_drift = True
+
+            update_record = ClientUpdateRecord.build_update_record(
+                        client_id=client.client_id,
+                        round_id=_round,
+                        global_sd=self.server_hierarchy[0][0].model.state_dict(),
+                        client_sd=client.model.state_dict(),
+                        spec=ModelSpec.from_model(client.model),
+                        base_global_round=base_global_model_round,
+                        base_global_hash=base_global_model_uuid,
+                        num_examples=client.local_trainset.dataset.targets.shape[0],
+                        dtype_for_storage=torch.float32,
+                        local_steps=client.epochs * (client.local_trainset.dataset.targets.shape[0] // client.mini_batch_size),
+                        local_epochs=client.epochs,
+                        hyper={}, # TODO: add hyperparameters if needed (normally stay the same?!)
+                        metrics={"train_loss": round_client_loss_and_accuracy[idx][0],
+                                 "train_accuracy": round_client_loss_and_accuracy[idx][1],
+                                 "train_deviation_loss": round_client_loss_and_accuracy[idx][0] - mean_loss,
+                                 "train_deviation_accuracy": round_client_loss_and_accuracy[idx][1] - mean_accuracy},
+                        store_flat_vector=True,
+                        malicious=malicious_drift
+                        )
+            os.makedirs(f"{file_save_path}client_updates/", exist_ok=True)
+            update_record.save_torch(path=f"{file_save_path}client_updates/client_{client.client_id}_round_{_round}.pt")
+
+        if _round % 10 == 0:
+            base_global_model_round = _round
+            os.makedirs(f"{file_save_path}base_models/", exist_ok=True)
+            self.save_model(
+                path=f"{file_save_path}base_models/server_model_round_{_round}.pt")
 
     def save_model(self, path: str) -> None:
         """
