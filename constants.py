@@ -19,7 +19,7 @@ class Paths:
     LOG_SAVE_PATH = './logs/saved_logs/'
     
     # saved model path
-    MODEL_SAVE_PATH = './root_server_model_20_rounds_MNIST.pth'
+    MODEL_LOAD_PATH = './root_server_model_160_rounds_CIFAR.pth'
 
 
 # File extensions

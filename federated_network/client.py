@@ -125,6 +125,6 @@ def client_fn(client_id: int, num_local_epochs: int, mini_batch_size: int, datas
                   local_trainset=local_trainset, testset=testset)
 
     if constants.ModelSettings.LOAD_MODEL_STATE:
-        client.model.load_state_dict(torch.load(constants.Paths.MODEL_SAVE_PATH))
+        client.model.load_state_dict(torch.load(constants.Paths.MODEL_LOAD_PATH))
 
     return client
