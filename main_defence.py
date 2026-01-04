@@ -70,15 +70,15 @@ def main():
     if constants.UpdateDataSettings.SAVE_DATASET_UPDATES:
         type_of_run = "update_datasets"
     else:
-        type_of_run = "testing_runs"
+        type_of_run = "testing"
 
-    base_save_path = f"{constants.UpdateDataSettings.DATA_SAVE_PATH}/{type_of_run}/{fed_net.dataset_name}/run_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_fedavg_{base_global_model_uuid}/"
+    base_save_path = f"{constants.UpdateDataSettings.DATA_SAVE_PATH}/{fed_net.dataset_name}/{fed_net.drift.drift_method}/{fed_net.drift.drift_pattern}/{type_of_run}_run_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_fedavg_{base_global_model_uuid}/"
 
     # Running the simulation
     fed_net.run_simulation(
         # file_save_path='./plots/saved_plots/rotation_tests/cifar_test/incremental_drift_after_160_r/',
         update_save_path=base_save_path + "updates/",
-        file_save_path=base_save_path + "plots/",
+        plot_save_path=base_save_path + "plots/",
         # log_save_path='./logs/saved_logs/rotation_tests/cifar_test/incremental_drift_after_160_r/',)
         log_save_path=base_save_path + "logs/",)
 
@@ -86,7 +86,7 @@ def main():
     if constants.ModelSettings.SAVE_MODEL_STATE:
         fed_net.save_model(f"./root_server_model__ro{fed_net.num_training_rounds}_rounds_{fed_net.dataset_name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pth")
 
-    # plt.figure()
+    # plt.figure()}
     # plt.plot(fed_net.drift._applied_drift_logging)
     # plt.title("Drift Transition Progress")
     # plt.xlabel("Training Round")
