@@ -123,7 +123,8 @@ class ClientUpdateRecord:
 
     # derived
     features: Dict[str, float] = field(default_factory=dict)
-    malicious: bool = False # whether this update was generated under malicious drift
+    malicious: bool = False # whether this update was generated under malicious drift # TODO: add no drift, rotational, label swap
+    drift: bool = False # whether this update was generated under drift
 
     def ensure_vector_and_features(self) -> None:
         if self.delta_vector is None:
@@ -152,7 +153,8 @@ class ClientUpdateRecord:
             },
             "delta_state_dict": self.delta_state_dict,
             "delta_vector": self.delta_vector,
-            "malicious": self.malicious
+            "malicious": self.malicious,
+            "drift": self.drift,
         }
         torch.save(payload, path)
 
@@ -176,7 +178,8 @@ class ClientUpdateRecord:
             features=meta.get("features", {}),
             delta_state_dict=payload["delta_state_dict"],
             delta_vector=payload.get("delta_vector"),
-            malicious=meta.get("malicious", False)
+            malicious=meta.get("malicious", False),
+            drift=meta.get("drift", False)
         )
         return rec
 
@@ -199,6 +202,7 @@ class ClientUpdateRecord:
         metrics: Optional[Dict[str, Any]] = None,
         store_flat_vector: bool = True,
         malicious: bool = False,
+        drift: bool = False,
     ) -> ClientUpdateRecord:
         delta_sd = compute_delta_state_dict(global_sd, client_sd, spec, dtype=dtype_for_storage)
         vec = flatten_delta(delta_sd) if store_flat_vector else None
@@ -218,7 +222,8 @@ class ClientUpdateRecord:
             metrics=metrics or {},
             delta_state_dict=delta_sd,
             delta_vector=vec,
-            malicious=malicious
+            malicious=malicious,
+            drift=drift
         )
         rec.ensure_vector_and_features()
         return rec

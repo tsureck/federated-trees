@@ -127,7 +127,7 @@ class FederatedNetwork:
                     modify_drifted_client_groups(self.drift, _round)
             else:
                 self.drift.is_drift = False
-
+            print(f"--- Training Round {_round + 1} with drift: {self.drift.is_drift} ---")
             # Clients sampled for a single round
             sampled_clients = self.sample_clients()
 
@@ -294,7 +294,8 @@ class FederatedNetwork:
                                  "train_deviation_loss": round_client_loss_and_accuracy[idx][0] - mean_loss,
                                  "train_deviation_accuracy": round_client_loss_and_accuracy[idx][1] - mean_accuracy},
                         store_flat_vector=True,
-                        malicious=malicious_drift
+                        malicious=malicious_drift,
+                        drift=self.drift.is_drift,
                         )
             os.makedirs(f"{file_save_path}client_updates/", exist_ok=True)
             update_record.save_torch(path=f"{file_save_path}client_updates/client_{client.client_id}_round_{_round}.pt")
