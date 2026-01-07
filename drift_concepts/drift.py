@@ -205,7 +205,7 @@ class Drift:
                     indices_a = (labels == class_a).nonzero(as_tuple=True)[0]
 
                     # Calculate target number to swap cumulatively
-                    target_swapped = int(transition_progress * indices_a)
+                    target_swapped = int(transition_progress * len(indices_a))
 
                     # Randomly select indices to swap
                     indices_a_to_swap = indices_a[torch.randperm(len(indices_a))[:target_swapped]]
