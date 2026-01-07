@@ -9,11 +9,17 @@ Each .pt is expected to contain something like:
   {"delta_state_dict": {param_name: tensor, ...}, ...}
 but the loader tries a few common fallbacks.
 
+Key idea for signed metrics (e.g. "mean"):
+- DO NOT normalize by sum(v) because it can be ~0 due to sign cancellations.
+- Instead normalize by sum(abs(v)) to keep sign + remain stable:
+    v_rel = v / (sum(abs(v)) + eps)
+
 Outputs:
   - matched_pairs.csv
   - layer_metrics_long.csv
   - layer_metrics_wide.csv
-  - Heatmaps per round: heatmap_round_<y>_{A,B,diff}.png
+  - Heatmaps per round (shared color scale per round):
+      heatmap_round_<y>_{A,B,diff}.png
 """
 
 from __future__ import annotations
@@ -30,8 +36,11 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import TwoSlopeNorm
 
 
-FNAME_RE = re.compile(r"client_(\d+)_round_(\d+)\.pt$")
+# ----------------------------
+# Config / layer names
+# ----------------------------
 
+FNAME_RE = re.compile(r"client_(\d+)_round_(\d+)\.pt$")
 
 LAYER_ORDER = [
     "conv1.weight", "conv1.bias",
@@ -40,10 +49,15 @@ LAYER_ORDER = [
     "fc2.weight", "fc2.bias",
 ]
 
-
 EARLY_PARAMS = {"conv1.weight", "conv1.bias", "conv2.weight", "conv2.bias"}
-LATE_PARAMS = {"fc1.weight", "fc1.bias", "fc2.weight", "fc2.bias"}
+LATE_PARAMS  = {"fc1.weight", "fc1.bias", "fc2.weight", "fc2.bias"}
 
+EPS = 1e-12
+
+
+# ----------------------------
+# Helpers
+# ----------------------------
 
 @dataclass(frozen=True)
 class Key:
@@ -64,48 +78,48 @@ def index_dir(folder: Path) -> Dict[Key, Path]:
         k = parse_filename(p)
         if k is None:
             continue
-        # last one wins if duplicates exist
-        idx[k] = p
+        idx[k] = p  # last wins on duplicates
     return idx
+
+
+def ensure_dir(p: Path) -> None:
+    p.mkdir(parents=True, exist_ok=True)
 
 
 def extract_state_dict(obj) -> Dict[str, torch.Tensor]:
     """
     Try to find the dict of parameter tensors in a loaded .pt.
-    Priority: delta_state_dict -> state_dict -> model_state_dict -> the object itself if dict[str, Tensor].
+    Priority: delta_state_dict -> state_dict -> model_state_dict -> object itself if dict[str, Tensor].
     """
     if isinstance(obj, dict):
         for key in ("delta_state_dict", "state_dict", "model_state_dict"):
             if key in obj and isinstance(obj[key], dict):
-                # ensure tensors
                 if all(isinstance(v, torch.Tensor) for v in obj[key].values()):
                     return obj[key]
-        # if already a dict[str, Tensor]
         if all(isinstance(k, str) for k in obj.keys()) and all(isinstance(v, torch.Tensor) for v in obj.values()):
             return obj  # type: ignore
     raise ValueError("Could not locate a tensor state dict (tried delta_state_dict/state_dict/model_state_dict).")
 
 
-def layer_norm(t: torch.Tensor, metric: str = "l2") -> float:
+def layer_metric_value(t: torch.Tensor, metric: str) -> float:
     x = t.detach().float().cpu()
+
     if metric == "l2":
         return torch.norm(x).item()
     if metric == "l1":
         return torch.norm(x, p=1).item()
     if metric == "mean_abs":
         return x.abs().mean().item()
+    if metric == "mean":
+        return x.mean().item()  # signed
     if metric == "rms":
         return torch.sqrt((x * x).mean()).item()
+
     raise ValueError(f"Unknown metric: {metric}")
 
 
 def compute_layer_metrics(state: Dict[str, torch.Tensor], metric: str) -> Dict[str, float]:
-    out: Dict[str, float] = {}
-    for name, t in state.items():
-        # you can filter here if you only want weights:
-        # if not name.endswith(".weight"): continue
-        out[name] = layer_norm(t, metric=metric)
-    return out
+    return {name: layer_metric_value(t, metric) for name, t in state.items()}
 
 
 def to_fixed_layer_vector(metrics: Dict[str, float], layers: List[str]) -> np.ndarray:
@@ -115,13 +129,23 @@ def to_fixed_layer_vector(metrics: Dict[str, float], layers: List[str]) -> np.nd
     return vec
 
 
-def safe_row_normalize(mat: np.ndarray, eps: float = 1e-12) -> np.ndarray:
-    denom = mat.sum(axis=1, keepdims=True)
-    return mat / (denom + eps)
+def normalize_profile(v: np.ndarray, signed: bool) -> Tuple[np.ndarray, float]:
+    """
+    Returns (v_rel, strength).
+    - strength: scalar magnitude of the update profile over layers.
+    - v_rel: normalized profile
 
-
-def ensure_dir(p: Path) -> None:
-    p.mkdir(parents=True, exist_ok=True)
+    signed=False -> normalize by sum(v) (v is non-negative metrics like l2/mean_abs)
+    signed=True  -> normalize by sum(abs(v)) to avoid cancellation
+    """
+    if signed:
+        strength = float(np.sum(np.abs(v)))
+        denom = strength + EPS
+        return v / denom, strength
+    else:
+        strength = float(np.sum(v))
+        denom = strength + EPS
+        return v / denom, strength
 
 
 def plot_heatmap_clients_layers(
@@ -130,12 +154,14 @@ def plot_heatmap_clients_layers(
     layers: List[str],
     title: str,
     out_path: Path,
-    diverging: bool = False,
+    diverging: bool,
+    vmax: Optional[float] = None,
 ) -> None:
     fig, ax = plt.subplots(figsize=(max(8, 0.6 * len(layers)), max(4, 0.35 * len(clients))))
 
     if diverging:
-        vmax = float(np.max(np.abs(mat))) if mat.size else 1.0
+        if vmax is None:
+            vmax = float(np.max(np.abs(mat))) if mat.size else 1.0
         norm = TwoSlopeNorm(vmin=-vmax, vcenter=0.0, vmax=vmax)
         im = ax.imshow(mat, aspect="auto", interpolation="nearest", norm=norm, cmap="RdBu_r")
     else:
@@ -156,6 +182,10 @@ def plot_heatmap_clients_layers(
     fig.savefig(out_path, dpi=250, bbox_inches="tight")
     plt.close(fig)
 
+
+# ----------------------------
+# Main
+# ----------------------------
 
 def main():
     # ap = argparse.ArgumentParser()
@@ -181,6 +211,7 @@ def main():
     ensure_dir(out_dir)
 
     layers = [l for l in LAYER_ORDER if (not weights_only or l.endswith(".weight"))]
+    signed_metric = (metric == "mean")  # only mean is signed here
 
     idx_a = index_dir(dir_a)
     idx_b = index_dir(dir_b)
@@ -192,11 +223,13 @@ def main():
     if not keys:
         raise SystemExit("No matching (client, round) pairs found between the two folders (or after filtering by --round).")
 
-    # Collect records (long format) for CSV
-    records = []  # dict rows
+    # Collect records for CSV
+    records: List[dict] = []
 
-    # Also keep per-round matrices for plotting
-    by_round: Dict[int, Dict[str, List[Tuple[int, np.ndarray]]]] = {}  # round -> {"A":[(client, vec)], "B":[...], "diff":[...]}
+    # Per-round matrices for plotting (store normalized profiles)
+    by_round: Dict[int, Dict[str, List[Tuple[int, np.ndarray]]]] = {}
+    # Also store strengths (absolute scale) if you want later
+    by_round_strength: Dict[int, Dict[str, List[Tuple[int, float]]]] = {}
 
     for k in keys:
         p_a = idx_a[k]
@@ -214,12 +247,11 @@ def main():
         v_a = to_fixed_layer_vector(m_a, layers)
         v_b = to_fixed_layer_vector(m_b, layers)
 
-        # Relative contribution per update (helps compare “where” the update went, independent of total magnitude)
-        v_a_rel = v_a / (v_a.sum() + 1e-12)
-        v_b_rel = v_b / (v_b.sum() + 1e-12)
+        v_a_rel, strength_a = normalize_profile(v_a, signed=signed_metric)
+        v_b_rel, strength_b = normalize_profile(v_b, signed=signed_metric)
         v_diff_rel = v_a_rel - v_b_rel
 
-        # Early vs late score (simple): early_fraction - late_fraction
+        # Early vs late score on normalized profiles
         early_idx = [i for i, l in enumerate(layers) if l in EARLY_PARAMS]
         late_idx  = [i for i, l in enumerate(layers) if l in LATE_PARAMS]
         early_a = float(v_a_rel[early_idx].sum()) if early_idx else 0.0
@@ -236,14 +268,16 @@ def main():
                 "round": k.round,
                 "client": k.client,
                 "layer": layer,
-                "A_abs": float(v_a[i]),
-                "B_abs": float(v_b[i]),
+                "A_value": float(v_a[i]),
+                "B_value": float(v_b[i]),
                 "A_rel": float(v_a_rel[i]),
                 "B_rel": float(v_b_rel[i]),
                 "diff_rel": float(v_diff_rel[i]),
+                "A_strength": strength_a,
+                "B_strength": strength_b,
+                "metric": metric,
                 "file_a": str(p_a),
                 "file_b": str(p_b),
-                "metric": metric,
                 "early_late_score_A": early_late_score_a,
                 "early_late_score_B": early_late_score_b,
             })
@@ -253,7 +287,13 @@ def main():
         by_round[k.round]["B"].append((k.client, v_b_rel))
         by_round[k.round]["diff"].append((k.client, v_diff_rel))
 
-    # Write CSVs (no pandas dependency)
+        by_round_strength.setdefault(k.round, {"A": [], "B": []})
+        by_round_strength[k.round]["A"].append((k.client, strength_a))
+        by_round_strength[k.round]["B"].append((k.client, strength_b))
+
+    # ----------------------------
+    # Write CSVs (no pandas)
+    # ----------------------------
     import csv
 
     # matched pairs
@@ -268,19 +308,24 @@ def main():
     with open(out_dir / "layer_metrics_long.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames)
         w.writeheader()
-        for r in records:
-            w.writerow(r)
+        w.writerows(records)
 
-    # wide metrics (one row per (round, client), columns like A_rel.conv1.weight, ...)
-    wide_rows = {}
+    # wide metrics (one row per (round, client))
+    wide_rows: Dict[Tuple[int, int], dict] = {}
     for r in records:
         key = (r["round"], r["client"])
-        wide_rows.setdefault(key, {"round": r["round"], "client": r["client"], "metric": r["metric"],
-                                   "early_late_score_A": r["early_late_score_A"],
-                                   "early_late_score_B": r["early_late_score_B"]})
+        wide_rows.setdefault(key, {
+            "round": r["round"],
+            "client": r["client"],
+            "metric": r["metric"],
+            "A_strength": r["A_strength"],
+            "B_strength": r["B_strength"],
+            "early_late_score_A": r["early_late_score_A"],
+            "early_late_score_B": r["early_late_score_B"],
+        })
         layer = r["layer"]
-        wide_rows[key][f"A_abs.{layer}"] = r["A_abs"]
-        wide_rows[key][f"B_abs.{layer}"] = r["B_abs"]
+        wide_rows[key][f"A_value.{layer}"] = r["A_value"]
+        wide_rows[key][f"B_value.{layer}"] = r["B_value"]
         wide_rows[key][f"A_rel.{layer}"] = r["A_rel"]
         wide_rows[key][f"B_rel.{layer}"] = r["B_rel"]
         wide_rows[key][f"diff_rel.{layer}"] = r["diff_rel"]
@@ -292,9 +337,12 @@ def main():
         for key in sorted(wide_rows.keys()):
             w.writerow(wide_rows[key])
 
+    # ----------------------------
     # Plot per-round heatmaps
+    # ----------------------------
+    # For signed metric, use diverging for A/B/diff.
+    # For non-signed metric, use non-diverging for A/B and diverging for diff (still meaningful).
     for rnd, payload in sorted(by_round.items()):
-        # sort clients
         payload["A"].sort(key=lambda x: x[0])
         payload["B"].sort(key=lambda x: x[0])
         payload["diff"].sort(key=lambda x: x[0])
@@ -304,23 +352,32 @@ def main():
         mat_b = np.stack([v for _, v in payload["B"]], axis=0)
         mat_d = np.stack([v for _, v in payload["diff"]], axis=0)
 
+        # Shared color scaling per round so colors are comparable between A/B/diff
+        if signed_metric:
+            vmax_round = float(np.max(np.abs(np.concatenate([mat_a.ravel(), mat_b.ravel(), mat_d.ravel()])))) or 1.0
+        else:
+            vmax_round = None  # not used for non-diverging
+
         plot_heatmap_clients_layers(
             mat_a, clients, layers,
-            title=f"Round {rnd} — Method A (relative layer contribution)",
+            title=f"Round {rnd} — Method A ({metric}; normalized profile)",
             out_path=out_dir / f"heatmap_round_{rnd}_A.png",
-            diverging=False,
+            diverging=signed_metric,
+            vmax=vmax_round,
         )
         plot_heatmap_clients_layers(
             mat_b, clients, layers,
-            title=f"Round {rnd} — Method B (relative layer contribution)",
+            title=f"Round {rnd} — Method B ({metric}; normalized profile)",
             out_path=out_dir / f"heatmap_round_{rnd}_B.png",
-            diverging=False,
+            diverging=signed_metric,
+            vmax=vmax_round,
         )
         plot_heatmap_clients_layers(
             mat_d, clients, layers,
-            title=f"Round {rnd} — Diff (A − B) in relative contribution",
+            title=f"Round {rnd} — Diff (A − B) in normalized profile",
             out_path=out_dir / f"heatmap_round_{rnd}_diff.png",
             diverging=True,
+            vmax=(vmax_round if signed_metric else None),
         )
 
     print(f"Done. Wrote outputs to: {out_dir.resolve()}")
@@ -329,7 +386,6 @@ def main():
     print(f"  - {out_dir / 'layer_metrics_long.csv'}")
     print(f"  - {out_dir / 'layer_metrics_wide.csv'}")
     print("  - heatmap_round_<r>_{A,B,diff}.png")
-
 
 if __name__ == "__main__":
     main()
