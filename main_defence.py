@@ -116,7 +116,8 @@ def run_simulation(
         update_save_path=base_save_path + "updates/",
         plot_save_path=base_save_path + "plots/",
         # log_save_path='./logs/saved_logs/rotation_tests/cifar_test/incremental_drift_after_160_r/',)
-        log_save_path=base_save_path + "logs/",)
+        log_save_path=base_save_path + "logs/",
+        base_global_model_uuid=base_global_model_uuid)
 
     print("Plotting simulation complete...")
     if constants.ModelSettings.SAVE_MODEL_STATE:
