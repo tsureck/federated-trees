@@ -132,6 +132,7 @@ class Drift:
             case constants.DriftPatterns.INCREMENTAL:
                 transition_progress = ((self.current_round + 1) - self.drift_start_round) / (
                         self.drift_end_round - self.drift_start_round)
+                transition_progress = min(max(transition_progress, 0.0), 1.0)
             case constants.DriftPatterns.GRADUAL:
                 transition_progress = smooth_ramp(self.current_round, self.drift_start_round, self.drift_end_round)
             case constants.DriftPatterns.ABRUPT:
