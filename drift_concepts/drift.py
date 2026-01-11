@@ -132,6 +132,7 @@ class Drift:
             case constants.DriftPatterns.INCREMENTAL:
                 transition_progress = ((self.current_round + 1) - self.drift_start_round) / (
                         self.drift_end_round - self.drift_start_round)
+                transition_progress = min(max(transition_progress, 0.0), 1.0)
             case constants.DriftPatterns.GRADUAL:
                 transition_progress = smooth_ramp(self.current_round, self.drift_start_round, self.drift_end_round)
             case constants.DriftPatterns.ABRUPT:
@@ -146,9 +147,9 @@ class Drift:
                     cycle_length = self.drift_end_round - self.drift_start_round + 1
                     position_in_cycle = (self.current_round - self.drift_start_round) % cycle_length
                     # Use num_drift_cycles to have multiple cycles across the drift period
-                    transition_progress = np.sin(
-                        2 * self.num_drift_cycles * (position_in_cycle + 1) / cycle_length * np.pi
-                    )
+                    transition_progress = (np.sin(
+                        2 * self.num_drift_cycles * (position_in_cycle + 1) / cycle_length * np.pi - np.pi/2
+                    ) + 1) / 2.0
 
         rotation_angle = transition_progress * self.max_rotation
         self._applied_drift_logging.append(rotation_angle)
@@ -246,17 +247,19 @@ class Drift:
                 else:
                     transition_progress = 0.0
             case constants.DriftPatterns.GRADUAL_REOCCURRING:
-                print("GRADUAL_REOCCURRING pattern not implemented for label swapping.")
-                return clients
-                # if self.current_round < self.drift_start_round or self.current_round > self.drift_end_round:
-                #     transition_progress = 0.0
-                # else:
-                #     cycle_length = self.drift_end_round - self.drift_start_round + 1
-                #     position_in_cycle = (self.current_round - self.drift_start_round) % cycle_length
-                #     # Use num_drift_cycles to have multiple cycles across the drift period
-                #     transition_progress = (np.sin(
-                #         2 * self.num_drift_cycles * (position_in_cycle + 1) / cycle_length * np.pi
-                #     ) * 0.5) + 0.5  # Normalize to [0, 1]
+                if self.current_round < self.drift_start_round or self.current_round >= self.drift_end_round:
+                    transition_progress = 0.0
+                else:
+                    cycle_length = self.drift_end_round - self.drift_start_round + 1
+                    position_in_cycle = (self.current_round - self.drift_start_round) % cycle_length
+                    # Use num_drift_cycles to have multiple cycles across the drift period
+                    transition_progress = (np.sin(
+                        2 * self.num_drift_cycles * (position_in_cycle + 1) / cycle_length * np.pi - np.pi/2
+                    ) + 1) / 2.0
+
+                    print(cycle_length)
+                    print(position_in_cycle)
+                    print(transition_progress)
 
         # Log the transition progress
         self._applied_drift_logging.append(transition_progress)

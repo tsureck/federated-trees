@@ -269,6 +269,16 @@ class FederatedNetwork:
         mean_loss = sum(loss for loss, _ in round_client_loss_and_accuracy) / count
         mean_accuracy = sum(acc for _, acc in round_client_loss_and_accuracy) / count
 
+        if _round % 10 == 0:
+            if _round > 0:
+                base_global_model_uuid = str(uuid.uuid4())
+            base_global_model_round = _round
+            os.makedirs(f"{file_save_path}base_models/", exist_ok=True)
+            self.save_model(
+                path=f"{file_save_path}base_models/server_model_round_{_round}_{base_global_model_uuid}.pt")
+
+        base_global_model_uuid = get_latest_base_global_model_uuid(f"{file_save_path}base_models/")
+
         for idx, client in enumerate(self.clients):
             malicious_drift = False
             if idx in self.drift.drifted_client_indices:
@@ -300,12 +310,6 @@ class FederatedNetwork:
             os.makedirs(f"{file_save_path}client_updates/", exist_ok=True)
             update_record.save_torch(path=f"{file_save_path}client_updates/client_{client.client_id}_round_{_round}.pt")
 
-        if _round % 10 == 0:
-            base_global_model_round = _round
-            os.makedirs(f"{file_save_path}base_models/", exist_ok=True)
-            self.save_model(
-                path=f"{file_save_path}base_models/server_model_round_{_round}.pt")
-
     def save_model(self, path: str) -> None:
         """
         Save the model of the root server to the specified path.
@@ -329,3 +333,27 @@ class FederatedNetwork:
             raise FileNotFoundError(f"Model file not found at {path}")
         weights = torch.load(path)
         self.server_hierarchy[0][0].model.load_state_dict(weights)
+
+def get_latest_base_global_model_uuid(path_to_models: str) -> str | None:
+    import os
+    import re
+
+    best_round = None
+    best_uuid = None
+
+    uuid_pat = r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}"
+    pattern = re.compile(rf"^server_model_round_(\d+)_({uuid_pat})\.pt$")
+
+    model_names = os.listdir(path_to_models)
+    for name in model_names:
+        m = pattern.match(name)
+        if not m:
+            continue
+        rnd = int(m.group(1))
+        uid = m.group(2)
+
+        if best_round is None or rnd > best_round:
+            best_round = rnd
+            best_uuid = uid
+
+    return best_uuid

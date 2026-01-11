@@ -76,7 +76,17 @@ def run_simulation(
     # #################################
     # Async - UTA - D=0.375, L=1
     # #################################
-    base_global_model_uuid = str(uuid.uuid4())
+    import re
+    r_uuid_from_file = r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}).pth"
+    model_uuid_search = re.search(r_uuid_from_file, constants.Paths.MODEL_LOAD_PATH)
+    if constants.ModelSettings.LOAD_MODEL_STATE and model_uuid_search:
+        base_global_model_uuid = model_uuid_search.group(1)
+    else:
+        base_global_model_uuid = str(uuid.uuid4())
+        if constants.Paths.MODEL_LOAD_PATH:
+            import os
+            os.rename(constants.Paths.MODEL_LOAD_PATH, constants.Paths.MODEL_LOAD_PATH[:-4] + f"_{base_global_model_uuid}.pth")
+
     if constants.UpdateDataSettings.SAVE_DATASET_UPDATES:
         type_of_run = "update_datasets"
     else:
@@ -106,11 +116,12 @@ def run_simulation(
         update_save_path=base_save_path + "updates/",
         plot_save_path=base_save_path + "plots/",
         # log_save_path='./logs/saved_logs/rotation_tests/cifar_test/incremental_drift_after_160_r/',)
-        log_save_path=base_save_path + "logs/",)
+        log_save_path=base_save_path + "logs/",
+        base_global_model_uuid=base_global_model_uuid)
 
     print("Plotting simulation complete...")
     if constants.ModelSettings.SAVE_MODEL_STATE:
-        fed_net.save_model(f"./root_server_model_{fed_net.num_training_rounds}_rounds_{fed_net.dataset_name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pth")
+        fed_net.save_model(f"./root_server_model_{fed_net.num_training_rounds}_rounds_{fed_net.dataset_name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.pth")
 
     plt.figure()
     plt.plot(fed_net.drift._applied_drift_logging)
@@ -126,260 +137,260 @@ def run_simulation(
 def main():
     print("torch threads:", torch.get_num_threads())
 
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.INCREMENTAL,
-        drift_method=constants.DriftCreationMethods.ROTATION,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=25,
-        swapping_direction='bidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(1, 2), (5, 6)],
-        classes_to_rotate=[],
-    )
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.INCREMENTAL,
+    #     drift_method=constants.DriftCreationMethods.ROTATION,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=25,
+    #     swapping_direction='bidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(1, 2), (5, 6)],
+    #     classes_to_rotate=[],
+    # )
 
-    ###############################
-    #### LABEL SWAPPING DRIFTS ####
-    ###############################
+    # ###############################
+    # #### LABEL SWAPPING DRIFTS ####
+    # ###############################
 
-    # LABEL SWAPPING DRIFTS Gradual and Incremental 1-2 5-6 bidirectional
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.ABRUPT,
-        drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='bidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(1, 2), (5, 6)],
-        classes_to_rotate=[],
-    )
+    # # LABEL SWAPPING DRIFTS Gradual and Incremental 1-2 5-6 bidirectional
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.ABRUPT,
+    #     drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='bidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(1, 2), (5, 6)],
+    #     classes_to_rotate=[],
+    # )
 
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.INCREMENTAL,
-        drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='bidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(1, 2), (5, 6)],
-        classes_to_rotate=[],
-    )
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.INCREMENTAL,
+    #     drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='bidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(1, 2), (5, 6)],
+    #     classes_to_rotate=[],
+    # )
     
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.GRADUAL,
-        drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='bidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(1, 2), (5, 6)],
-        classes_to_rotate=[],
-    )
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.GRADUAL,
+    #     drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='bidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(1, 2), (5, 6)],
+    #     classes_to_rotate=[],
+    # )
 
 
-    # LABEL SWAPPING DRIFTS Gradual and Incremental 1-2 5-6 unidirectional
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.ABRUPT,
-        drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='unidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(1, 2), (5, 6)],
-        classes_to_rotate=[],
-    )
+    # # LABEL SWAPPING DRIFTS Gradual and Incremental 1-2 5-6 unidirectional
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.ABRUPT,
+    #     drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='unidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(1, 2), (5, 6)],
+    #     classes_to_rotate=[],
+    # )
 
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.INCREMENTAL,
-        drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='unidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(1, 2), (5, 6)],
-        classes_to_rotate=[],
-    )
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.INCREMENTAL,
+    #     drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='unidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(1, 2), (5, 6)],
+    #     classes_to_rotate=[],
+    # )
     
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.GRADUAL,
-        drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='unidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(1, 2), (5, 6)],
-        classes_to_rotate=[],
-    )
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.GRADUAL,
+    #     drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='unidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(1, 2), (5, 6)],
+    #     classes_to_rotate=[],
+    # )
 
 
-    # LABEL SWAPPING DRIFTS Gradual and Incremental 1-2 bidirectional
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.ABRUPT,
-        drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='bidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(1, 2)],
-        classes_to_rotate=[],
-    )
+    # # LABEL SWAPPING DRIFTS Gradual and Incremental 1-2 bidirectional
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.ABRUPT,
+    #     drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='bidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(1, 2)],
+    #     classes_to_rotate=[],
+    # )
 
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.INCREMENTAL,
-        drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='bidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(1, 2)],
-        classes_to_rotate=[],
-    )
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.INCREMENTAL,
+    #     drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='bidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(1, 2)],
+    #     classes_to_rotate=[],
+    # )
     
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.GRADUAL,
-        drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='bidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(1, 2)],
-        classes_to_rotate=[],
-    )
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.GRADUAL,
+    #     drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='bidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(1, 2)],
+    #     classes_to_rotate=[],
+    # )
     
-    # LABEL SWAPPING DRIFTS Gradual and Incremental 5-6 bidirectional
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.ABRUPT,
-        drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='bidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(5, 6)],
-        classes_to_rotate=[],
-    )
+    # # LABEL SWAPPING DRIFTS Gradual and Incremental 5-6 bidirectional
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.ABRUPT,
+    #     drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='bidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(5, 6)],
+    #     classes_to_rotate=[],
+    # )
 
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.INCREMENTAL,
-        drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='bidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(5, 6)],
-        classes_to_rotate=[],
-    )
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.INCREMENTAL,
+    #     drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='bidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(5, 6)],
+    #     classes_to_rotate=[],
+    # )
     
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.GRADUAL,
-        drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='bidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(5, 6)],
-        classes_to_rotate=[],
-    )
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.GRADUAL,
+    #     drift_method=constants.DriftCreationMethods.LABEL_SWAPPING,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='bidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(5, 6)],
+    #     classes_to_rotate=[],
+    # )
 
-    ###############################
-    ####   Rotational DRIFTS   ####
-    ###############################
+    # ###############################
+    # ####   Rotational DRIFTS   ####
+    # ###############################
     
-    # Rotational DRIFTS Gradual and Incremental and abrupt all classes 45
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.ABRUPT,
-        drift_method=constants.DriftCreationMethods.ROTATION,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='bidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(5, 6)],
-        classes_to_rotate=[],
-    )
+    # # Rotational DRIFTS Gradual and Incremental and abrupt all classes 45
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.ABRUPT,
+    #     drift_method=constants.DriftCreationMethods.ROTATION,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='bidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(5, 6)],
+    #     classes_to_rotate=[],
+    # )
 
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.INCREMENTAL,
-        drift_method=constants.DriftCreationMethods.ROTATION,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='bidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(5, 6)],
-        classes_to_rotate=[],
-    )
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.INCREMENTAL,
+    #     drift_method=constants.DriftCreationMethods.ROTATION,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='bidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(5, 6)],
+    #     classes_to_rotate=[],
+    # )
     
-    run_simulation(
-        drift_pattern=constants.DriftPatterns.GRADUAL,
-        drift_method=constants.DriftCreationMethods.ROTATION,
-        clients_fraction=0.5,
-        dataset_name=constants.DatasetNames.MNIST,
-        num_training_rounds=40,
-        drift_start_round=0.25,
-        drift_end_round=0.75,
-        max_rotation=45,
-        swapping_direction='bidirectional',
-        num_client_instances=8,
-        class_pairs_to_swap=[(5, 6)],
-        classes_to_rotate=[],
-    )
+    # run_simulation(
+    #     drift_pattern=constants.DriftPatterns.GRADUAL,
+    #     drift_method=constants.DriftCreationMethods.ROTATION,
+    #     clients_fraction=0.5,
+    #     dataset_name=constants.DatasetNames.MNIST,
+    #     num_training_rounds=40,
+    #     drift_start_round=0.25,
+    #     drift_end_round=0.75,
+    #     max_rotation=45,
+    #     swapping_direction='bidirectional',
+    #     num_client_instances=8,
+    #     class_pairs_to_swap=[(5, 6)],
+    #     classes_to_rotate=[],
+    # )
 
     # Rotational DRIFTS Gradual and Incremental and abrupt all classes 65
     run_simulation(
