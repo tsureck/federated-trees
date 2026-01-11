@@ -14,7 +14,7 @@ import matplotlib
 # Choose a backend based on what works best for your environment
 import constants
 
-matplotlib.use('TkAgg')  # Or 'TkAgg', 'Qt5Agg', etc.
+matplotlib.use('Agg')  # Or 'TkAgg', 'Qt5Agg', etc.
 
 
 def plot_client_performance_vs_rounds(loss_and_accuracy: List[List[Tuple]], file_save_path=None) -> None:
