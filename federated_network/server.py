@@ -149,6 +149,6 @@ def server_fn(server_id: int, dataset_name: str, server_abs_id: int) -> Server:
     server = Server(_server_id=server_id, _abs_id=server_abs_id, _strategy=aggregator_strategy, _model=model)
 
     if constants.ModelSettings.LOAD_MODEL_STATE:
-        server.model.load_state_dict(torch.load(constants.Paths.MODEL_SAVE_PATH))
+        server.model.load_state_dict(torch.load(constants.Paths.MODEL_LOAD_PATH))
 
     return server

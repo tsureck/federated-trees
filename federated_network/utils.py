@@ -86,7 +86,7 @@ def link_clients_to_servers(leaf_servers: List[Server], clients: List[Client], n
 
 
 def train_client_models(all_clients, sampled_client_ids, servers: List[Server], drift: Drift,
-                        simulation_parameters: Dict) -> List:
+                        simulation_parameters: Dict, plot_save_path: str) -> List:
     """
     Train the client models in the network while applying drift if necessary.
     :param all_clients: List of all client instances
@@ -106,7 +106,7 @@ def train_client_models(all_clients, sampled_client_ids, servers: List[Server], 
     # Apply drift to the clients
     if True:  # TODO: correct this drift.is_drift:
         # Sample data from the drift applied datasets
-        apply_drift(all_clients, drift)
+        apply_drift(all_clients, drift, plot_save_path)
     else:
         for client in all_clients:
             # Sample data from the original datasets
@@ -166,4 +166,4 @@ def update_progress(_round, num_training_rounds) -> None:
     :return: None
     """
     progress = (_round / num_training_rounds) * 100
-    print(f"\rSimulation Percentage completed: {progress:.2f}%", end="")
+    print(f"\rSimulation Percentage completed: {progress:.2f}%")
