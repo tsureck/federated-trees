@@ -93,7 +93,7 @@ def plot_stacked_filters_3rows(w1: np.ndarray, w2: np.ndarray, out_path="conv1_s
     plt.colorbar(im, ax=ax, fraction=0.02, pad=0.02)
 
     plt.tight_layout()
-    plt.savefig(out_path, dpi=300, bbox_inches="tight")
+    plt.savefig(out_path, dpi=300, bbox_inches="tight", pad_inches=0.05)
     plt.show()
 
 def compare_pth_files(file1: str, file2: str, layer: str):

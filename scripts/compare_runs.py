@@ -29,6 +29,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Tuple, List, Optional
+from constants import AnalysisSettings
 
 import numpy as np
 import torch
@@ -179,7 +180,11 @@ def plot_heatmap_clients_layers(
 
     plt.colorbar(im, ax=ax, fraction=0.02, pad=0.02)
     plt.tight_layout()
-    fig.savefig(out_path, dpi=250, bbox_inches="tight")
+    if AnalysisSettings.PLOTTING_FORMAT == 'pgf':
+        fig.savefig(out_path.with_suffix('.pgf'), format="pgf", backend='pgf', bbox_inches="tight", pad_inches=0.05)
+    else:
+        fig.savefig(out_path, dpi=300, bbox_inches='tight', pad_inches=0.05)
+    
     plt.close(fig)
 
 

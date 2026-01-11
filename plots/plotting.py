@@ -281,11 +281,11 @@ def configure_and_save_plot(_plt, _x_label, _y_label, _title, _file_path, legend
     if not os.path.exists(png_dir_path):
         print(f"Creating PNG directory Path: {png_dir_path}")
         os.makedirs(png_dir_path)
-    _plt.savefig(png_path, dpi=300)  # Increase DPI for higher resolution
+    _plt.savefig(png_path, dpi=300, bbox_inches='tight', pad_inches=0.05)  # Increase DPI for higher resolution
 
     # Save the plot as a PDF
     pdf_path = f"{_file_path}.pdf"
-    _plt.savefig(pdf_path, format="pdf")
+    _plt.savefig(pdf_path, format="pdf", backend='pgf', bbox_inches='tight', pad_inches=0.05)
 
     # Display the plot
     # _plt.show()

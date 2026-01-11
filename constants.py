@@ -154,3 +154,6 @@ class UpdateDataSettings:
 class ModelSettings:
     SAVE_MODEL_STATE = False  # Whether to save the model state after training
     LOAD_MODEL_STATE = True  # Whether to load the model state before training
+
+class AnalysisSettings:
+    PLOTTING_FORMAT: str = 'pgf'  # 'pgf' or 'png'
