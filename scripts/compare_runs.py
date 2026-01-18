@@ -103,6 +103,18 @@ def extract_state_dict(obj) -> Dict[str, torch.Tensor]:
     raise ValueError("Could not locate a tensor state dict (tried delta_state_dict/state_dict/model_state_dict).")
 
 
+def load_update_record(path: Path) -> Optional[Dict]:
+    """Load a ClientUpdateRecord from a .pt file via torch.load.
+    Returns dict with keys: meta, delta_state_dict, delta_vector, malicious, drift_applied, is_drifted_client
+    """
+    try:
+        payload = torch.load(str(path), map_location="cpu")
+        return payload
+    except Exception as e:
+        print(f"Could not load {path}: {e}")
+        return None
+
+
 def layer_metric_value(t: torch.Tensor, metric: str) -> float:
     x = t.detach().float().cpu()
 
@@ -180,11 +192,92 @@ def plot_heatmap_clients_layers(
     ax.set_yticklabels(clients)
 
     plt.colorbar(im, ax=ax, fraction=0.02, pad=0.02)
-    plt.tight_layout()
+    # plt.tight_layout()
     if AnalysisSettings.PLOTTING_FORMAT == 'pgf':
         fig.savefig(out_path.with_suffix('.pgf'), format="pgf", backend='pgf')
     else:
        fig.savefig(out_path, dpi=300)
+
+    plt.close(fig)
+
+
+def plot_drift_comparison_subplots(
+    mat_a_drifted: np.ndarray,
+    mat_b_drifted: np.ndarray,
+    mat_a_nondrifted: np.ndarray,
+    mat_b_nondrifted: np.ndarray,
+    clients_drifted: List[int],
+    clients_a_nondrifted: List[int],
+    clients_b_nondrifted: List[int],
+    layers: List[str],
+    out_path: Path,
+    metric: str = "l2",
+) -> None:
+    """Create a 1x3 subplot showing:
+    - Left: A (drifted) - B (drifted)
+    - Middle: A (drifted) - A (non-drifted)
+    - Right: B (drifted) - B (non-drifted)
+    All on the same color scale.
+    """
+    # Compute differences
+    diff_ab = mat_a_drifted - mat_b_drifted  # A drifted - B drifted
+    diff_a = mat_a_drifted - mat_a_nondrifted  # A drifted - A non-drifted
+    diff_b = mat_b_drifted - mat_b_nondrifted  # B drifted - B non-drifted
+
+    # Common color scale across all three plots
+    vmax = float(np.max(np.abs([
+        np.max(np.abs(diff_ab.ravel())) if diff_ab.size else 0,
+        np.max(np.abs(diff_a.ravel())) if diff_a.size else 0,
+        np.max(np.abs(diff_b.ravel())) if diff_b.size else 0,
+    ]))) or 1.0
+    norm = TwoSlopeNorm(vmin=-vmax, vcenter=0.0, vmax=vmax)
+
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+
+    # Plot 1: A (drifted) - B (drifted)
+    im1 = axes[0].imshow(diff_ab, aspect="auto", interpolation="nearest", norm=norm, cmap="RdBu_r")
+    axes[0].set_title(f"A (drifted) − B (drifted)\\n({metric})")
+    axes[0].set_xlabel("Layer")
+    axes[0].set_ylabel("Client")
+    axes[0].set_xticks(np.arange(len(layers)))
+    axes[0].set_xticklabels(layers, rotation=45, ha="right")
+    axes[0].set_yticks(np.arange(len(clients_drifted)))
+    axes[0].set_yticklabels(clients_drifted)
+    plt.colorbar(im1, ax=axes[0], fraction=0.02, pad=0.02)
+
+    # Plot 2: A (drifted) - A (non-drifted)
+    im2 = axes[1].imshow(diff_a, aspect="auto", interpolation="nearest", norm=norm, cmap="RdBu_r")
+    axes[1].set_title(f"A: drifted − non-drifted\\n({metric})")
+    axes[1].set_xlabel("Layer")
+    axes[1].set_ylabel("Client")
+    axes[1].set_xticks(np.arange(len(layers)))
+    axes[1].set_xticklabels(layers, rotation=45, ha="right")
+    # Y-axis: drifted clients
+    axes[1].set_yticks(np.arange(len(clients_drifted)))
+    axes[1].set_yticklabels(clients_drifted)
+    plt.colorbar(im2, ax=axes[1], fraction=0.02, pad=0.02)
+
+    # Plot 3: B (drifted) - B (non-drifted)
+    im3 = axes[2].imshow(diff_b, aspect="auto", interpolation="nearest", norm=norm, cmap="RdBu_r")
+    axes[2].set_title(f"B: drifted − non-drifted\\n({metric})")
+    axes[2].set_xlabel("Layer")
+    axes[2].set_ylabel("Client")
+    axes[2].set_xticks(np.arange(len(layers)))
+    axes[2].set_xticklabels(layers, rotation=45, ha="right")
+    # Y-axis: drifted clients
+    axes[2].set_yticks(np.arange(len(clients_drifted)))
+    axes[2].set_yticklabels(clients_drifted)
+    plt.colorbar(im3, ax=axes[2], fraction=0.02, pad=0.02)
+
+    # plt.tight_layout()
+    if AnalysisSettings.PLOTTING_FORMAT == 'pgf':
+        try:
+            fig.savefig(out_path.with_suffix('.pdf'), format="pdf", backend='pgf')
+        except Exception as e:
+            print(f"PGF save failed: {e}; falling back to PNG.")
+            fig.savefig(out_path, dpi=300)
+    else:
+        fig.savefig(out_path, dpi=300)
 
     plt.close(fig)
 
@@ -195,8 +288,8 @@ def plot_heatmap_clients_layers(
 
 def main():
     import datetime
-    dir_a = "./fl_runs/MNIST/label_swapping/incremental/1-2_5-6_bidirectional/update_datasets_run_2026-01-06_18-14-38_fedavg_25c10661-6755-4adb-aebc-ad56c9e78e86/updates/client_updates"
-    dir_b = "./fl_runs/MNIST/rotation/incremental/all_classes_rot_45/update_datasets_run_2026-01-06_22-24-35_fedavg_f405cb53-c990-4946-95a0-0f3499d97d89/updates/client_updates"
+    dir_a = "./fl_runs/MNIST/label_swapping/incremental/5-6_bidirectional/update_datasets_run_2026-01-18_22-44-53_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"
+    dir_b = "./fl_runs/MNIST/rotation/incremental/all_classes_rot_45/update_datasets_run_2026-01-18_22-54-13_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"
     out_dir = f"./scripts/output/{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
     metric = "l2"
     round_arg = None
@@ -288,25 +381,6 @@ def main():
         by_round_strength[k.round]["A"].append((k.client, strength_a))
         by_round_strength[k.round]["B"].append((k.client, strength_b))
 
-    # ----------------------------
-    # Write CSVs (no pandas)
-    # ----------------------------
-    import csv
-
-    # matched pairs
-    with open(out_dir / "matched_pairs.csv", "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=["round", "client", "file_a", "file_b"])
-        w.writeheader()
-        for k in keys:
-            w.writerow({"round": k.round, "client": k.client, "file_a": str(idx_a[k]), "file_b": str(idx_b[k])})
-
-    # long metrics
-    fieldnames = list(records[0].keys())
-    with open(out_dir / "layer_metrics_long.csv", "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fieldnames)
-        w.writeheader()
-        w.writerows(records)
-
     # wide metrics (one row per (round, client))
     wide_rows: Dict[Tuple[int, int], dict] = {}
     for r in records:
@@ -327,13 +401,97 @@ def main():
         wide_rows[key][f"B_rel.{layer}"] = r["B_rel"]
         wide_rows[key][f"diff_rel.{layer}"] = r["diff_rel"]
 
-    wide_fieldnames = sorted({k for row in wide_rows.values() for k in row.keys()})
-    with open(out_dir / "layer_metrics_wide.csv", "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=wide_fieldnames)
-        w.writeheader()
-        for key in sorted(wide_rows.keys()):
-            w.writerow(wide_rows[key])
+    # ----------------------------
+    # Drift-based comparison (if ClientUpdateRecord is available)
+    # ----------------------------
+    records_a_by_key: Dict = {}
+    records_b_by_key: Dict = {}
 
+    for k in keys:
+        p_a = idx_a[k]
+        p_b = idx_b[k]
+        rec_a = load_update_record(p_a)
+        rec_b = load_update_record(p_b)
+        if rec_a:
+            records_a_by_key[k] = rec_a
+        if rec_b:
+            records_b_by_key[k] = rec_b
+
+    # Identify drifted vs non-drifted clients from the records
+    has_drift_info = bool(records_a_by_key and records_b_by_key)
+    if has_drift_info:
+        drifted_client_ids = set()
+        non_drifted_client_ids = set()
+        for k in keys:
+            if k in records_a_by_key:
+                is_drifted = records_a_by_key[k].get("is_drifted_client", False)
+                if is_drifted:
+                    drifted_client_ids.add(k.client)
+                else:
+                    non_drifted_client_ids.add(k.client)
+
+        print(f"Found {len(drifted_client_ids)} drifted clients and {len(non_drifted_client_ids)} non-drifted clients")
+
+        # Create drift comparison plots per round
+        for rnd in sorted(set(k.round for k in keys)):
+            drifted_keys_rnd = [k for k in keys if k.round == rnd and k.client in drifted_client_ids]
+            non_drifted_keys_rnd = [k for k in keys if k.round == rnd and k.client in non_drifted_client_ids]
+
+            if not drifted_keys_rnd or not non_drifted_keys_rnd:
+                continue  # Skip rounds without both types
+
+            drifted_clients_sorted = sorted(set(k.client for k in drifted_keys_rnd))
+            non_drifted_clients_sorted = sorted(set(k.client for k in non_drifted_keys_rnd))
+
+            # Collect matrices for drifted clients
+            mat_a_drifted_list = []
+            mat_b_drifted_list = []
+            for client_id in drifted_clients_sorted:
+                k = Key(client=client_id, round=rnd)
+                if k in records_a_by_key and k in records_b_by_key:
+                    delta_sd_a = records_a_by_key[k].get("delta_state_dict", {})
+                    delta_sd_b = records_b_by_key[k].get("delta_state_dict", {})
+                    v_a = to_fixed_layer_vector(compute_layer_metrics(delta_sd_a, metric), layers)
+                    v_b = to_fixed_layer_vector(compute_layer_metrics(delta_sd_b, metric), layers)
+                    v_a_rel, _ = normalize_profile(v_a, signed=signed_metric)
+                    v_b_rel, _ = normalize_profile(v_b, signed=signed_metric)
+                    mat_a_drifted_list.append(v_a_rel)
+                    mat_b_drifted_list.append(v_b_rel)
+
+            # Collect matrices for non-drifted clients
+            mat_a_non_drifted_list = []
+            mat_b_non_drifted_list = []
+            for client_id in non_drifted_clients_sorted:
+                k = Key(client=client_id, round=rnd)
+                if k in records_a_by_key and k in records_b_by_key:
+                    delta_sd_a = records_a_by_key[k].get("delta_state_dict", {})
+                    delta_sd_b = records_b_by_key[k].get("delta_state_dict", {})
+                    v_a = to_fixed_layer_vector(compute_layer_metrics(delta_sd_a, metric), layers)
+                    v_b = to_fixed_layer_vector(compute_layer_metrics(delta_sd_b, metric), layers)
+                    v_a_rel, _ = normalize_profile(v_a, signed=signed_metric)
+                    v_b_rel, _ = normalize_profile(v_b, signed=signed_metric)
+                    mat_a_non_drifted_list.append(v_a_rel)
+                    mat_b_non_drifted_list.append(v_b_rel)
+
+            # Create plot if we have data
+            if mat_a_drifted_list and mat_a_non_drifted_list and mat_b_drifted_list and mat_b_non_drifted_list:
+                mat_a_drifted = np.stack(mat_a_drifted_list, axis=0)
+                mat_b_drifted = np.stack(mat_b_drifted_list, axis=0)
+                mat_a_non_drifted = np.stack(mat_a_non_drifted_list, axis=0)
+                mat_b_non_drifted = np.stack(mat_b_non_drifted_list, axis=0)
+
+                plot_drift_comparison_subplots(
+                    mat_a_drifted, mat_b_drifted,
+                    mat_a_non_drifted, mat_b_non_drifted,
+                    drifted_clients_sorted,
+                    non_drifted_clients_sorted,
+                    non_drifted_clients_sorted,
+                    layers,
+                    out_path=out_dir / f"drift_comparison_round_{rnd}.png",
+                    metric=metric,
+                )
+
+    return
     # ----------------------------
     # Plot per-round heatmaps
     # ----------------------------
@@ -383,6 +541,8 @@ def main():
     print(f"  - {out_dir / 'layer_metrics_long.csv'}")
     print(f"  - {out_dir / 'layer_metrics_wide.csv'}")
     print("  - heatmap_round_<r>_{A,B,diff}.png")
+    if has_drift_info:
+        print("  - drift_comparison_round_<r>.png (3-panel: A-B drifted | A drifted-nondrifted | B drifted-nondrifted)")
 
 if __name__ == "__main__":
     main()

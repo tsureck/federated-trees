@@ -156,5 +156,5 @@ class ModelSettings:
     LOAD_MODEL_STATE = True  # Whether to load the model state before training
 
 class AnalysisSettings:
-    PLOTTING_FORMAT: str = 'pgf'  # 'pgf' or 'png'
+    PLOTTING_FORMAT: str = 'png'  # 'pgf' or 'png'
     STORE_PLOTS: bool = False  # Whether to store the plots or not

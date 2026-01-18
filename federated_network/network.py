@@ -270,8 +270,7 @@ class FederatedNetwork:
         for idx, client in enumerate(self.clients):
             malicious_drift = False
             if idx in self.drift.drifted_client_indices:
-                if self.drift.drift_method == constants.DriftCreationMethods.LABEL_SWAPPING and \
-                    self.drift.drift_start_round <= _round <= self.drift.drift_end_round:
+                if self.drift.drift_method == constants.DriftCreationMethods.LABEL_SWAPPING:
                     malicious_drift = True
 
             update_record = ClientUpdateRecord.build_update_record(
@@ -293,7 +292,8 @@ class FederatedNetwork:
                                  "train_deviation_accuracy": round_client_loss_and_accuracy[idx][1] - mean_accuracy},
                         store_flat_vector=True,
                         malicious=malicious_drift,
-                        drift=self.drift.is_drift,
+                        drift_applied=self.drift.is_drift,
+                        is_drifted_client=idx in self.drift.drifted_client_indices,
                         )
             os.makedirs(f"{file_save_path}client_updates/", exist_ok=True)
             update_record.save_torch(path=f"{file_save_path}client_updates/client_{client.client_id}_round_{_round}.pt")

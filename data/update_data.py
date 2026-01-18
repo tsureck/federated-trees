@@ -124,7 +124,8 @@ class ClientUpdateRecord:
     # derived
     features: Dict[str, float] = field(default_factory=dict)
     malicious: bool = False # whether this update was generated under malicious drift # TODO: add no drift, rotational, label swap
-    drift: bool = False # whether this update was generated under drift
+    drift_applied: bool = False # whether this update was generated under drift
+    is_drifted_client: bool = False # whether this client is drifted
 
     def ensure_vector_and_features(self) -> None:
         if self.delta_vector is None:
@@ -154,7 +155,8 @@ class ClientUpdateRecord:
             "delta_state_dict": self.delta_state_dict,
             "delta_vector": self.delta_vector,
             "malicious": self.malicious,
-            "drift": self.drift,
+            "drift_applied": self.drift_applied,
+            "is_drifted_client": self.is_drifted_client,
         }
         torch.save(payload, path)
 
@@ -179,7 +181,8 @@ class ClientUpdateRecord:
             delta_state_dict=payload["delta_state_dict"],
             delta_vector=payload.get("delta_vector"),
             malicious=meta.get("malicious", False),
-            drift=meta.get("drift", False)
+            drift_applied=meta.get("drift_applied", False),
+            is_drifted_client=meta.get("is_drifted_client", False)
         )
         return rec
 
@@ -202,7 +205,8 @@ class ClientUpdateRecord:
         metrics: Optional[Dict[str, Any]] = None,
         store_flat_vector: bool = True,
         malicious: bool = False,
-        drift: bool = False,
+        drift_applied: bool = False,
+        is_drifted_client: bool = False,
     ) -> ClientUpdateRecord:
         delta_sd = compute_delta_state_dict(global_sd, client_sd, spec, dtype=dtype_for_storage)
         vec = flatten_delta(delta_sd) if store_flat_vector else None
@@ -223,7 +227,8 @@ class ClientUpdateRecord:
             delta_state_dict=delta_sd,
             delta_vector=vec,
             malicious=malicious,
-            drift=drift
+            drift_applied=drift_applied,
+            is_drifted_client=is_drifted_client
         )
         rec.ensure_vector_and_features()
         return rec
