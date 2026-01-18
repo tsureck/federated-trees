@@ -56,7 +56,7 @@ def write_logs(loss_and_accuracy: List[any], file_name: str) -> None:
             writer.writerows(loss_and_accuracy)
 
     save_as_pkl(loss_and_accuracy, file_name)
-    save_as_csv(loss_and_accuracy, file_name)
+    # save_as_csv(loss_and_accuracy, file_name)
 
 
 def read_logs(file_name: str) -> List[any]:
