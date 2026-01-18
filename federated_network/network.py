@@ -24,10 +24,7 @@ from federated_network.utils import update_progress, link_server_hierarchy, trai
 from logs.analysis_functions import compute_client_average_metrics, compute_server_average_metrics, \
     split_clients_loss_and_accuracy
 from logs.logging import write_logs
-from plots.plotting import plot_client_performance_vs_rounds, plot_server_performance_vs_rounds, \
-    plot_client_avg_performance_vs_rounds, plot_server_lvl_avg_performance_vs_rounds, \
-    plot_server_overall_avg_performance_vs_rounds
-
+from plots.plot_from_logs import plot_and_read_from_logs
 
 class FederatedNetwork:
     def __init__(self, num_client_instances, server_tree_layout, num_training_rounds, dataset_name, drift_specs,
@@ -197,12 +194,6 @@ class FederatedNetwork:
 
         print(f"Runtime: {end_time - start_time} seconds")
 
-        # Plot the performance of the clients
-        plot_client_performance_vs_rounds(clients_loss_and_accuracy, file_save_path=plot_save_path)
-
-        # Plot the performance of the server hierarchy
-        plot_server_performance_vs_rounds(server_loss_and_accuracy, file_save_path=plot_save_path)
-
         # Split the client performance to drifted and non-drifted clients
         if self.drift.is_synchronous:
             non_drifted_clients_loss_and_accuracy, drifted_clients_loss_and_accuracy = split_clients_loss_and_accuracy(
@@ -227,10 +218,10 @@ class FederatedNetwork:
         # Log the performance of the clients
         write_logs(clients_loss_and_accuracy, file_name=log_save_path + constants.Logs.CLIENT_LOG)
         # Log the performance of the clients separated by drifted and non-drifted
-        write_logs(non_drifted_clients_loss_and_accuracy,
-                   file_name=log_save_path + constants.Logs.NON_DRIFTED_CLIENT_LOG)
-        write_logs(drifted_clients_loss_and_accuracy,
-                   file_name=log_save_path + constants.Logs.DRIFTED_CLIENT_LOG)
+        # write_logs(non_drifted_clients_loss_and_accuracy,
+        #            file_name=log_save_path + constants.Logs.NON_DRIFTED_CLIENT_LOG)
+        # write_logs(drifted_clients_loss_and_accuracy,
+        #            file_name=log_save_path + constants.Logs.DRIFTED_CLIENT_LOG)
         # Average performance of the clients
         write_logs(non_drifted_client_averages,
                    file_name=log_save_path + constants.Logs.NON_DRIFTED_CLIENT_AVG_LOG)
@@ -245,12 +236,9 @@ class FederatedNetwork:
         write_logs(server_level_averages, file_name=log_save_path + constants.Logs.SERVER_LVL_AVG_LOG)
         write_logs(server_overall_averages, file_name=log_save_path + constants.Logs.SERVER_OVERALL_AVG_LOG)
 
-        # Plot average performances
-        plot_client_avg_performance_vs_rounds([non_drifted_client_averages, drifted_client_averages],
-                                              self.drift.is_synchronous,
-                                              file_save_path=plot_save_path)
-        plot_server_lvl_avg_performance_vs_rounds(server_level_averages, file_save_path=plot_save_path)
-        plot_server_overall_avg_performance_vs_rounds(server_overall_averages, file_save_path=plot_save_path)
+        if not constants.AnalysisSettings.STORE_PLOTS:
+            return
+        plot_and_read_from_logs(dir_name=plot_save_path.split('/plots/')[0])
 
     def save_client_updates(
         self,

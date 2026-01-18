@@ -94,27 +94,27 @@ class Plots:
     # for client individual loss/accuracy vs rounds plot
     CLIENT_LOSS_VS_ROUNDS_TITLE = 'Loss per Client Across Rounds'
     CLIENT_ACCURACY_VS_ROUNDS_TITLE = 'Accuracy per Client Across Rounds'
-    CLIENT_LOSS_VS_ROUNDS_PNG = 'client_loss_vs_rounds.png'
-    CLIENT_ACCURACY_VS_ROUNDS_PNG = 'client_accuracy_vs_rounds.png'
+    CLIENT_LOSS_VS_ROUNDS_PNG = 'client_loss_vs_rounds'
+    CLIENT_ACCURACY_VS_ROUNDS_PNG = 'client_accuracy_vs_rounds'
     # for server individual loss/accuracy vs rounds plot
     SERVER_LOSS_VS_ROUNDS_TITLE = 'Loss per servers Across Rounds'
     SERVER_ACCURACY_VS_ROUNDS_TITLE = 'Accuracy per server Across Rounds'
-    SERVER_LOSS_VS_ROUNDS_PNG = 'server_loss_vs_rounds.png'
-    SERVER_ACCURACY_VS_ROUNDS_PNG = 'server_accuracy_vs_rounds.png'
+    SERVER_LOSS_VS_ROUNDS_PNG = 'server_loss_vs_rounds'
+    SERVER_ACCURACY_VS_ROUNDS_PNG = 'server_accuracy_vs_rounds'
     # for client level average loss/accuracy vs rounds plot
     CLIENT_AVG_LOSS_VS_ROUNDS_TITLE = 'Client Level Average Loss Across Rounds'
-    CLIENT_AVG_LOSS_VS_ROUNDS_PNG = 'client_avg_loss_vs_rounds.png'
+    CLIENT_AVG_LOSS_VS_ROUNDS_PNG = 'client_avg_loss_vs_rounds'
     CLIENT_AVG_ACCURACY_VS_ROUNDS_TITLE = 'Client Level Average Accuracy Across Rounds'
-    CLIENT_AVG_ACCURACY_VS_ROUNDS_PNG = 'client_avg_accuracy_vs_rounds.png'
+    CLIENT_AVG_ACCURACY_VS_ROUNDS_PNG = 'client_avg_accuracy_vs_rounds'
     # for server level average loss/accuracy vs rounds plot
     SERVER_LEVEL_AVG_LOSS_VS_ROUNDS_TITLE = 'Server Level Average Loss Across Rounds'
-    SERVER_LEVEL_AVG_LOSS_VS_ROUNDS_PNG = 'server_level_avg_loss_vs_rounds.png'
+    SERVER_LEVEL_AVG_LOSS_VS_ROUNDS_PNG = 'server_level_avg_loss_vs_rounds'
     SERVER_OVERALL_AVG_LOSS_VS_ROUNDS_TITLE = 'Server Overall Average Loss Across Rounds'
-    SERVEr_OVERALL_AVG_LOSS_VS_ROUNDS_PNG = 'server_overall_avg_loss_vs_rounds.png'
+    SERVER_OVERALL_AVG_LOSS_VS_ROUNDS_PNG = 'server_overall_avg_loss_vs_rounds'
     SERVER_LEVEL_AVG_ACCURACY_VS_ROUNDS_TITLE = 'Server Level Average Accuracy Across Rounds'
-    SERVER_LEVEL_AVG_ACCURACY_VS_ROUNDS_PNG = 'server_level_avg_accuracy_vs_rounds.png'
+    SERVER_LEVEL_AVG_ACCURACY_VS_ROUNDS_PNG = 'server_level_avg_accuracy_vs_rounds'
     SERVER_OVERALL_AVG_ACCURACY_VS_ROUNDS_TITLE = 'Server Overall Average Accuracy Across Rounds'
-    SERVER_OVERALL_AVG_ACCURACY_VS_ROUNDS_PNG = 'server_overall_avg_accuracy_vs_rounds.png'
+    SERVER_OVERALL_AVG_ACCURACY_VS_ROUNDS_PNG = 'server_overall_avg_accuracy_vs_rounds'
 
 
 # Drift patterns
@@ -157,3 +157,4 @@ class ModelSettings:
 
 class AnalysisSettings:
     PLOTTING_FORMAT: str = 'pgf'  # 'pgf' or 'png'
+    STORE_PLOTS: bool = False  # Whether to store the plots or not
