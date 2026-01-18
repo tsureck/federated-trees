@@ -23,12 +23,14 @@ Outputs:
 """
 
 from __future__ import annotations
+import sys
+sys.path.append('./')
 
-import argparse
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Tuple, List, Optional
+from constants import AnalysisSettings
 
 import numpy as np
 import torch
@@ -179,7 +181,11 @@ def plot_heatmap_clients_layers(
 
     plt.colorbar(im, ax=ax, fraction=0.02, pad=0.02)
     plt.tight_layout()
-    fig.savefig(out_path, dpi=250, bbox_inches="tight")
+    if AnalysisSettings.PLOTTING_FORMAT == 'pgf':
+        fig.savefig(out_path.with_suffix('.pgf'), format="pgf", backend='pgf')
+    else:
+       fig.savefig(out_path, dpi=300)
+
     plt.close(fig)
 
 
@@ -188,15 +194,6 @@ def plot_heatmap_clients_layers(
 # ----------------------------
 
 def main():
-    # ap = argparse.ArgumentParser()
-    # ap.add_argument("--dir_a", type=str, required=True, help="Folder with method A updates")
-    # ap.add_argument("--dir_b", type=str, required=True, help="Folder with method B updates")
-    # ap.add_argument("--out", type=str, default="compare_out", help="Output folder")
-    # ap.add_argument("--metric", type=str, default="l2", choices=["l2", "l1", "mean_abs", "rms"],
-    #                 help="Magnitude metric per parameter tensor")
-    # ap.add_argument("--round", type=int, default=None, help="If set, only process this round")
-    # ap.add_argument("--weights_only", action="store_true", help="If set, ignore bias parameters")
-    # args = ap.parse_args()
     import datetime
     dir_a = "./fl_runs/MNIST/label_swapping/incremental/1-2_5-6_bidirectional/update_datasets_run_2026-01-06_18-14-38_fedavg_25c10661-6755-4adb-aebc-ad56c9e78e86/updates/client_updates"
     dir_b = "./fl_runs/MNIST/rotation/incremental/all_classes_rot_45/update_datasets_run_2026-01-06_22-24-35_fedavg_f405cb53-c990-4946-95a0-0f3499d97d89/updates/client_updates"

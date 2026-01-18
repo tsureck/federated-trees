@@ -5,17 +5,13 @@ Author: Nisal Hemadasa
 Date: 29-10-2024
 Version: 1.0
 """
-import bisect
 import copy
 import math
 from typing import Dict, List
-import os
-from matplotlib.pyplot import imsave
 
 import numpy as np
 import torch
 from scipy.ndimage import rotate
-import torchvision.transforms as transforms
 
 import constants
 from federated_network.client import Client
@@ -178,10 +174,33 @@ class Drift:
                 clients[idx].local_trainset.dataset = first_drifted_client.local_trainset.dataset
                 clients[idx].testset.dataset = first_drifted_client.testset.dataset
 
-        if first_drifted_client:
-            if first_drifted_client.local_trainset:
-                os.makedirs(plot_save_path, exist_ok=True)
-                imsave(f"{plot_save_path}image_in_round_{self.current_round}.png", first_drifted_client.local_trainset.dataset.data[0].numpy())
+        # if first_drifted_client:
+        #     if first_drifted_client.local_trainset:
+        #         os.makedirs(plot_save_path, exist_ok=True)
+        #         img = first_drifted_client.local_trainset.dataset.data[0].numpy()
+
+        #         fmt = getattr(constants.AnalysisSettings, 'PLOTTING_FORMAT', 'png')
+
+        #         # Prepare image for imshow: convert (C,H,W) -> (H,W,C) if needed
+        #         if img.ndim == 3 and img.shape[0] in (1, 3):
+        #             img_to_show = np.transpose(img, (1, 2, 0))
+        #         else:
+        #             img_to_show = img
+
+        #         # Choose output path and kwargs; pass backend to savefig for PGF
+        #         if fmt == 'pgf':
+        #             out_path = f"{plot_save_path}image_in_round_{self.current_round}.pdf"
+        #             save_kwargs = {'bbox_inches': 'tight', 'pad_inches': 0, 'format': 'pdf', 'backend': 'pgf'}
+        #         else:
+        #             out_path = f"{plot_save_path}image_in_round_{self.current_round}.png"
+        #             save_kwargs = {'bbox_inches': 'tight', 'pad_inches': 0, 'format': 'png'}
+
+        #         fig = plt.figure(frameon=False)
+        #         ax = fig.add_subplot(111)
+        #         ax.imshow(img_to_show, cmap='gray' if img_to_show.ndim == 2 else None)
+        #         ax.axis('off')
+        #         fig.savefig(out_path, **save_kwargs)
+        #         plt.close(fig)
         return clients
 
     def swap_labels(self, clients: List[Client]) -> List[Client]:

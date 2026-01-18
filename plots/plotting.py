@@ -14,7 +14,7 @@ import matplotlib
 # Choose a backend based on what works best for your environment
 import constants
 
-matplotlib.use('TkAgg')  # Or 'TkAgg', 'Qt5Agg', etc.
+matplotlib.use('Agg')  # Or 'TkAgg', 'Qt5Agg', etc.
 
 
 def plot_client_performance_vs_rounds(loss_and_accuracy: List[List[Tuple]], file_save_path=None) -> None:
@@ -242,7 +242,7 @@ def plot_server_overall_avg_performance_vs_rounds(loss_and_accuracy: List[Tuple]
 
     configure_and_save_plot(plt, constants.Plots.NUMBER_OF_ROUNDS, constants.Plots.LOSS,
                             constants.Plots.SERVER_OVERALL_AVG_LOSS_VS_ROUNDS_TITLE,
-                            file_save_path + constants.Plots.SERVEr_OVERALL_AVG_LOSS_VS_ROUNDS_PNG)
+                            file_save_path + constants.Plots.SERVER_OVERALL_AVG_LOSS_VS_ROUNDS_PNG)
 
     # Plot the average accuracy of the server against the number of rounds
     plt.figure()  # Create a new figure for accuracy
@@ -279,14 +279,14 @@ def configure_and_save_plot(_plt, _x_label, _y_label, _title, _file_path, legend
         png_dir_path += path_elem + "/"
     print(f"PNG directory Path: {png_dir_path}")
     if not os.path.exists(png_dir_path):
-        print(f"Creating PNG directory Path: {png_dir_path}")
+        print(f"Creating Figure directory Path: {png_dir_path}")
         os.makedirs(png_dir_path)
-    _plt.savefig(png_path, dpi=300)  # Increase DPI for higher resolution
 
     # Save the plot as a PDF
     pdf_path = f"{_file_path}.pdf"
-    _plt.savefig(pdf_path, format="pdf")
-
+    if constants.AnalysisSettings.PLOTTING_FORMAT == "pgf":
+        _plt.savefig(pdf_path, format="pdf", backend='pgf', bbox_inches='tight', pad_inches=0.05)
+    else:
+        _plt.savefig(png_path, dpi=300, bbox_inches='tight', pad_inches=0.05)  # Increase DPI for higher resolution
     # Display the plot
-    # _plt.show()
     _plt.close()

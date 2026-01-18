@@ -11,7 +11,8 @@ import torch
 import constants
 from federated_network.network import FederatedNetwork
 import matplotlib.pyplot as plt
-
+import matplotlib
+matplotlib.use("Agg")
 
 def run_simulation(
     drift_pattern: str,
