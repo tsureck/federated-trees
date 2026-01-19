@@ -5,6 +5,45 @@ This repository provides code, examples, and utilities to build, train, and eval
 
 ---
 
+## How to Run
+
+Create a virtualenv
+
+```sh
+python3 -m venv .venv
+# activate it
+source .venv/bin/activate
+```
+
+Configure the main and afterwards run
+
+```sh
+python main_defence.py
+```
+
+### Generate plots
+
+Manually you have to enter the paths to the simulations run directory you want to generate plots for.
+
+Then run the following
+
+```sh
+python plots/plot_from_logs.py
+```
+
+Then plots will be generated in the same directory.
+
+### Create Update Comparison plots
+
+For comparing client updates for rounds, one needs two runs and enter the two directories into the script file for `dir_a` and `dir_b` or
+create the according logic in the `main_defence.py`.
+
+Then if run manually:
+
+```sh
+python scripts/compare_run.py
+```
+
 ## 📚 Paper / Reference
 
 Please cite the original work as:
