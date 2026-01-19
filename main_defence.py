@@ -169,8 +169,8 @@ def main():
         classes_to_rotate=[],
     )
 
-    from scripts.compare_runs import main
-    main(dir_a, dir_b)
+    from scripts.compare_runs import main as compare_runs
+    compare_runs(dir_a, dir_b)
 
     return
 
