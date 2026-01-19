@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
+import constants
 
 class SimpleModel(nn.Module):
     def __init__(self):
@@ -136,8 +137,21 @@ def train(_model: nn.Module, _dataloader: DataLoader, epochs: int, verbose=False
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # criterion = nn.BCEWithLogitsLoss()
     # criterion = nn.BCELoss()
-    criterion = nn.CrossEntropyLoss()
-    _optimizer = torch.optim.Adam(_model.parameters(), lr=0.001)
+    if constants.TrainingSettings.LOSS == "CrossEntropyLoss":
+        criterion = nn.CrossEntropyLoss()
+    else:
+        raise ValueError(f"Unsupported loss function: {constants.TrainingSettings.LOSS}")
+    
+    if constants.TrainingSettings.OPTIMIZER == "Adam":
+        _optimizer = torch.optim.Adam(
+            _model.parameters(),
+            lr=constants.TrainingSettings.LEARNING_RATE,
+            betas=constants.TrainingSettings.BETAS,
+            eps=constants.TrainingSettings.EPS
+        )
+    else:
+        raise ValueError(f"Unsupported optimizer: {constants.TrainingSettings.OPTIMIZER}")
+
     _model.train()
     _model.to(device)
     for epoch in range(epochs):
@@ -146,7 +160,7 @@ def train(_model: nn.Module, _dataloader: DataLoader, epochs: int, verbose=False
         # Also takes batches of data from the dataset and trains the model
 
         # Define the maximum number of batches to use per epoch
-        max_batches_per_epoch = 10
+        max_batches_per_epoch = constants.TrainingSettings.MAX_BATCHES_PER_EPOCH
 
         # Limit the loop to a fixed number of batches
         for batch_idx, (_x, _y) in enumerate(_dataloader):
@@ -190,7 +204,11 @@ def test(_model: nn.Module, _dataset: DataLoader) -> Tuple[float, float]:
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # criterion = nn.BCEWithLogitsLoss()
-    criterion = nn.CrossEntropyLoss()
+    if constants.TrainingSettings.LOSS == "CrossEntropyLoss":
+        criterion = nn.CrossEntropyLoss()
+    else:
+        raise ValueError(f"Unsupported loss function: {constants.TrainingSettings.LOSS}")
+
     correct, total, loss = 0, 0, 0.0
     _model.eval()
     _model.to(device)

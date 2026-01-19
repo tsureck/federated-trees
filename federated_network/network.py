@@ -285,7 +285,13 @@ class FederatedNetwork:
                         dtype_for_storage=torch.float32,
                         local_steps=client.epochs * (client.local_trainset.dataset.targets.shape[0] // client.mini_batch_size),
                         local_epochs=client.epochs,
-                        hyper={}, # TODO: add hyperparameters if needed (normally stay the same?!)
+                        hyper={
+                            "learning_rate": constants.TrainingSettings.LEARNING_RATE,
+                            "optimizer": constants.TrainingSettings.OPTIMIZER,
+                            "loss": constants.TrainingSettings.LOSS,
+                            "eps": constants.TrainingSettings.EPS,
+                            "betas": constants.TrainingSettings.BETAS,
+                        },
                         metrics={"train_loss": round_client_loss_and_accuracy[idx][0],
                                  "train_accuracy": round_client_loss_and_accuracy[idx][1],
                                  "train_deviation_loss": round_client_loss_and_accuracy[idx][0] - mean_loss,
