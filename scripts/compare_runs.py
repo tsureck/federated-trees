@@ -286,10 +286,12 @@ def plot_drift_comparison_subplots(
 # Main
 # ----------------------------
 
-def main():
+def main(dir_a: str = None, dir_b: str = None) -> None:
     import datetime
-    dir_a = "./fl_runs/MNIST/label_swapping/incremental/5-6_bidirectional/update_datasets_run_2026-01-18_22-44-53_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"
-    dir_b = "./fl_runs/MNIST/rotation/incremental/all_classes_rot_45/update_datasets_run_2026-01-18_22-54-13_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"
+    if not dir_a:
+        dir_a = "./fl_runs/MNIST/label_swapping/incremental/5-6_bidirectional/update_datasets_run_2026-01-18_22-44-53_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"
+    if not dir_b:
+        dir_b = "./fl_runs/MNIST/rotation/incremental/all_classes_rot_65/update_datasets_run_2026-01-19_00-04-07_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"
     out_dir = f"./scripts/output/{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
     metric = "l2"
     round_arg = None
