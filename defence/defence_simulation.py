@@ -33,27 +33,42 @@ def analyze_client_update_round(round_idx: int, dir_name: str) -> float:
     return classify_malicious_drift_clients(features, updates)
 
 
-def analyze_classification_performance(actual_labels: list[bool], drifted_clients: list[bool], classified_labels: list[bool]) -> None:
+def analyze_classification_performance(
+    actual_labels: list[bool], drifted_clients: list[bool], classified_labels: list[bool]
+) -> None:
     """Analyze the performance of a classification system."""
     # Calculate accuracy
     correct = sum(1 for a, c in zip(actual_labels, classified_labels) if a == c)
     total_accuracy = (correct, len(actual_labels) if actual_labels else 0)
 
-    drifted_client_accuracy = (sum(
-        1 for a, c, d in zip(actual_labels, classified_labels, drifted_clients) if d and a == c
-    ), (sum(drifted_clients) if sum(drifted_clients) > 0 else 0))
+    drifted_client_accuracy = (
+        sum(
+            1 for a, c, d in zip(actual_labels, classified_labels, drifted_clients) if d and a == c
+        ),
+        (sum(drifted_clients) if sum(drifted_clients) > 0 else 0),
+    )
 
-    benign_client_accuracy = (sum(
-        1 for a, c, d in zip(actual_labels, classified_labels, drifted_clients) if not d and a == c
-    ), (sum(not d for d in drifted_clients) if sum(not d for d in drifted_clients) > 0 else 0))
+    benign_client_accuracy = (
+        sum(
+            1
+            for a, c, d in zip(actual_labels, classified_labels, drifted_clients)
+            if not d and a == c
+        ),
+        (sum(not d for d in drifted_clients) if sum(not d for d in drifted_clients) > 0 else 0),
+    )
 
     return total_accuracy, drifted_client_accuracy, benign_client_accuracy
 
 
 def classify_malicious_drift_clients(features: dict, updates: dict) -> float:
     """Classify clients as malicious or benign based on a defence strategy."""
-    clients = [(upd["is_drifted_client"] and upd["drift_applied"] and upd["malicious"]) for _, upd in updates.items()]
-    drifted_clients = [(upd["is_drifted_client"] and upd["drift_applied"]) for _, upd in updates.items()]
+    clients = [
+        (upd["is_drifted_client"] and upd["drift_applied"] and upd["malicious"])
+        for _, upd in updates.items()
+    ]
+    drifted_clients = [
+        (upd["is_drifted_client"] and upd["drift_applied"]) for _, upd in updates.items()
+    ]
 
     malicious = classify_by_share_fc2_threshold(features, updates, median_flag=True)
 
@@ -61,27 +76,32 @@ def classify_malicious_drift_clients(features: dict, updates: dict) -> float:
 
 
 if __name__ == "__main__":
-    dir_name_ls = "./fl_runs/MNIST/label_swapping/incremental/5-6_bidirectional/update_datasets_run_2026-01-18_22-44-53_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"
-    dir_name_rot = "./fl_runs/MNIST/rotation/incremental/all_classes_rot_65/update_datasets_run_2026-01-19_00-04-07_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"
+    dir_name_ls = "./fl_runs/MNIST/label_swapping/incremental/5-6_bidirectional/update_datasets_run_2026-01-18_22-44-53_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"  # noqa: E501
+    dir_name_rot = "./fl_runs/MNIST/rotation/incremental/all_classes_rot_65/update_datasets_run_2026-01-19_00-04-07_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"  # noqa: E501
 
     round_accuracies = ([], [])
 
-    # for i in range(10, 30):
     for i in range(40):
         print(f"--- Analyzing round {i} ---")
         round_accuracies[0].append(analyze_client_update_round(i, dir_name_ls))
         round_accuracies[1].append(analyze_client_update_round(i, dir_name_rot))
 
     averaged_accuracies = np.sum(round_accuracies, axis=1)
-    averaged_accuracies_percentage = [averaged_accuracies[0][:, 0] / averaged_accuracies[0][:, 1],
-                                      averaged_accuracies[1][:, 0] / averaged_accuracies[1][:, 1]]
+    averaged_accuracies_percentage = [
+        averaged_accuracies[0][:, 0] / averaged_accuracies[0][:, 1],
+        averaged_accuracies[1][:, 0] / averaged_accuracies[1][:, 1],
+    ]
     print("Final Results:")
-    print("Label-Swapping Attack Accuracies: " +
-          f"Total Acc: {(averaged_accuracies_percentage[0][0]):.2%} | " +
-          f"Drifted Acc: {(averaged_accuracies_percentage[0][1]):.2%} | " +
-          f"Benign Acc: {(averaged_accuracies_percentage[0][2]):.2%}")
-    print("Rotation Benign Drift Accuracies: " +
-          f"Total Acc: {(averaged_accuracies_percentage[1][0]):.2%} | " +
-          f"Drifted Acc: {(averaged_accuracies_percentage[1][1]):.2%} | " +
-          f"Benign Acc: {(averaged_accuracies_percentage[1][2]):.2%}")
+    print(
+        "Label-Swapping Attack Accuracies: "
+        + f"Total Acc: {(averaged_accuracies_percentage[0][0]):.2%} | "
+        + f"Drifted Acc: {(averaged_accuracies_percentage[0][1]):.2%} | "
+        + f"Benign Acc: {(averaged_accuracies_percentage[0][2]):.2%}"
+    )
+    print(
+        "Rotation Benign Drift Accuracies: "
+        + f"Total Acc: {(averaged_accuracies_percentage[1][0]):.2%} | "
+        + f"Drifted Acc: {(averaged_accuracies_percentage[1][1]):.2%} | "
+        + f"Benign Acc: {(averaged_accuracies_percentage[1][2]):.2%}"
+    )
     pass
