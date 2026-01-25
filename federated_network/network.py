@@ -116,7 +116,10 @@ class FederatedNetwork:
         for _round in range(self.num_training_rounds):
             # Add drift to the clients, if within the drift period
             self.drift.current_round = _round
-            if self.drift.drift_start_round <= _round <= self.drift.drift_end_round:
+            if self.drift.drift_pattern == constants.DriftPatterns.GRADUAL_REOCCURRING:
+                if self.drift.drift_start_round <= _round <= self.drift.drift_end_round:
+                    self.drift.is_drift = True
+            elif self.drift.drift_start_round <= _round:
                 self.drift.is_drift = True
 
                 # Modify the client groups if the drift is asynchronous
