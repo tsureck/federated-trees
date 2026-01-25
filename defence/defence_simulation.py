@@ -6,6 +6,8 @@ from features import (
     read_updates_from_round,
 )
 
+from defence.strategies.share_fc2 import classify_by_share_fc2_threshold
+
 
 def analyze_client_update_round(round_idx: int, dir_name: str) -> float:
     """Analyze client updates for a given round index."""
@@ -57,26 +59,6 @@ def classify_malicious_drift_clients(features: dict, updates: dict) -> float:
     malicious = classify_by_share_fc2_threshold(features, updates, median_flag=True)
 
     return analyze_classification_performance(clients, drifted_clients, malicious)
-
-
-def classify_by_share_fc2_threshold(features: dict, updates: dict, median_flag: bool = True) -> None:
-    """Classify clients as malicious if their share_fc2 exceeds a threshold."""
-    share_fc2_median = th.median(
-        th.tensor([feat["share_fc2"] for _, feat in features.items()])
-    ).item()
-    share_fc2_mean = th.mean(th.tensor([feat["share_fc2"] for _, feat in features.items()])).item()
-
-    threshold = (share_fc2_mean - 0.5 * (share_fc2_mean - share_fc2_median)) / 10
-    # print(threshold)
-    # print([(feat["share_fc2"] - share_fc2_median) for _, feat in features.items()])
-    # print([(feat["share_fc2"] - share_fc2_mean) for _, feat in features.items()])
-    # print([(feat["share_fc2"] - share_fc2_mean) > threshold for _, feat in features.items()])
-    base = share_fc2_median if median_flag else share_fc2_mean
-    malicious = [
-        (feat["share_fc2"] - base) > threshold
-        for _, feat in features.items()]
-
-    return malicious
 
 
 if __name__ == "__main__":
