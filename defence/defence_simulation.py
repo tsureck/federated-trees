@@ -1,3 +1,4 @@
+import numpy as np
 import torch as th
 from features import (
     EPS,
@@ -5,8 +6,7 @@ from features import (
     get_features_from_update,
     read_updates_from_round,
 )
-
-from defence.strategies.share_fc2 import classify_by_share_fc2_threshold
+from strategies.share_fc2 import classify_by_share_fc2_threshold
 
 
 def analyze_client_update_round(round_idx: int, dir_name: str) -> float:
@@ -37,17 +37,16 @@ def analyze_classification_performance(actual_labels: list[bool], drifted_client
     """Analyze the performance of a classification system."""
     # Calculate accuracy
     correct = sum(1 for a, c in zip(actual_labels, classified_labels) if a == c)
-    total_accuracy = correct / len(actual_labels) if actual_labels else 0
+    total_accuracy = (correct, len(actual_labels) if actual_labels else 0)
 
-    drifted_client_accuracy = sum(
+    drifted_client_accuracy = (sum(
         1 for a, c, d in zip(actual_labels, classified_labels, drifted_clients) if d and a == c
-    ) / (sum(drifted_clients) if sum(drifted_clients) > 0 else 1)
+    ), (sum(drifted_clients) if sum(drifted_clients) > 0 else 0))
 
-    benign_client_accuracy = sum(
+    benign_client_accuracy = (sum(
         1 for a, c, d in zip(actual_labels, classified_labels, drifted_clients) if not d and a == c
-    ) / (sum(not d for d in drifted_clients) if sum(not d for d in drifted_clients) > 0 else 1)
+    ), (sum(not d for d in drifted_clients) if sum(not d for d in drifted_clients) > 0 else 0))
 
-    print(f"Accuracy: {total_accuracy:.2%} | Drifted Client Accuracy: {drifted_client_accuracy:.2%} | Benign Client Accuracy: {benign_client_accuracy:.2%}")
     return total_accuracy, drifted_client_accuracy, benign_client_accuracy
 
 
@@ -67,16 +66,22 @@ if __name__ == "__main__":
 
     round_accuracies = ([], [])
 
-    for i in range(10, 30):
+    # for i in range(10, 30):
+    for i in range(40):
         print(f"--- Analyzing round {i} ---")
-        print("Label-Swapping Attack:")
         round_accuracies[0].append(analyze_client_update_round(i, dir_name_ls))
-        print("Rotation Benign Drift:")
         round_accuracies[1].append(analyze_client_update_round(i, dir_name_rot))
 
-    import numpy as np
-    averaged_accuracies = np.mean(round_accuracies, axis=1)
+    averaged_accuracies = np.sum(round_accuracies, axis=1)
+    averaged_accuracies_percentage = [averaged_accuracies[0][:, 0] / averaged_accuracies[0][:, 1],
+                                      averaged_accuracies[1][:, 0] / averaged_accuracies[1][:, 1]]
     print("Final Results:")
-    print(f"Label-Swapping Attack Accuracies: Total Acc: {averaged_accuracies[0][0]:.2%} | Drifted Acc: {averaged_accuracies[0][1]:.2%} | Benign Acc: {averaged_accuracies[0][2]:.2%}")
-    print(f"Rotation Benign Drift Accuracies: Total Acc: {averaged_accuracies[1][0]:.2%} | Drifted Acc: {averaged_accuracies[1][1]:.2%} | Benign Acc: {averaged_accuracies[1][2]:.2%}")
+    print("Label-Swapping Attack Accuracies: " +
+          f"Total Acc: {(averaged_accuracies_percentage[0][0]):.2%} | " +
+          f"Drifted Acc: {(averaged_accuracies_percentage[0][1]):.2%} | " +
+          f"Benign Acc: {(averaged_accuracies_percentage[0][2]):.2%}")
+    print("Rotation Benign Drift Accuracies: " +
+          f"Total Acc: {(averaged_accuracies_percentage[1][0]):.2%} | " +
+          f"Drifted Acc: {(averaged_accuracies_percentage[1][1]):.2%} | " +
+          f"Benign Acc: {(averaged_accuracies_percentage[1][2]):.2%}")
     pass
