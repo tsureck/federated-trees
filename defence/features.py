@@ -61,7 +61,7 @@ def entropy_from_probs(p: th.Tensor, normalized: bool = True) -> float:
     return float((h / (h_max + EPS)).item())
 
 
-def get_features_from_update(update: dict, mean_p: th.Tensor):
+def get_features_from_update(update: dict, mean_p: th.Tensor, median_p: th.Tensor) -> dict:
     """Extract features from one update.
     mean_p must be computed across the round first.
     """
@@ -80,6 +80,9 @@ def get_features_from_update(update: dict, mean_p: th.Tensor):
 
     # cosine similarity to round mean profile
     cos_to_mean = float(functional.cosine_similarity(p, mean_p, dim=0).item())
+    robust_dist = float(th.norm(p - median_p, 1).item())
+
+    s = float(p[layers.index("fc2.weight")].item()) - float(p[layers.index("fc1.weight")].item())
 
     return {
         "global_l2": global_l2,
@@ -99,4 +102,6 @@ def get_features_from_update(update: dict, mean_p: th.Tensor):
         "share_conv2": float(p[layers.index("conv2.weight")].item())
         if "conv2.weight" in layers
         else None,
+        "robust_dist": robust_dist,
+        "s_fc2_fc1": s,
     }

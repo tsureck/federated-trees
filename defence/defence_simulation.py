@@ -6,7 +6,7 @@ from features import (
     get_features_from_update,
     read_updates_from_round,
 )
-from strategies.share_fc2 import classify_by_share_fc2_threshold
+from strategies.share_fc2 import classify_by_s_iqr, classify_by_s_kmeans, classify_by_s_lowerhalf_mad, classify_by_s_mad, classify_by_share_fc2_lowerhalf_mad, classify_by_share_fc2_threshold
 
 
 def analyze_client_update_round(round_idx: int, dir_name: str) -> float:
@@ -20,13 +20,15 @@ def analyze_client_update_round(round_idx: int, dir_name: str) -> float:
 
     p = th.stack(profiles)
     mean_p = p.mean(dim=0)
+    median_p = th.median(p, dim=0).values
     mean_p /= mean_p.sum() + EPS
+    median_p /= median_p.sum() + EPS
 
     features = {}
 
     # --- extract features per client ---
     for client_file, upd in updates.items():
-        feats = get_features_from_update(upd, mean_p)
+        feats = get_features_from_update(upd, mean_p, median_p)
         features[client_file] = feats
 
     # INSERT DEFENSE STRATEGIES HERE
@@ -70,12 +72,18 @@ def classify_malicious_drift_clients(features: dict, updates: dict) -> float:
         (upd["is_drifted_client"] and upd["drift_applied"]) for _, upd in updates.items()
     ]
 
-    malicious = classify_by_share_fc2_threshold(features, updates, median_flag=True)
+    # malicious = classify_by_share_fc2_threshold(features, updates, median_flag=True)
+    # malicious = classify_by_s_mad(features, k=1.5)
+    # malicious = classify_by_s_kmeans(features)
+    # malicious = classify_by_s_iqr(features)
+    # malicious = classify_by_s_lowerhalf_mad(features)
+    malicious = classify_by_share_fc2_lowerhalf_mad(features)
 
     return analyze_classification_performance(clients, drifted_clients, malicious)
 
 
-if __name__ == "__main__":
+def main():
+    """Main function to analyze client updates across multiple rounds."""
     dir_name_ls = "./fl_runs/MNIST/label_swapping/incremental/5-6_bidirectional/update_datasets_run_2026-01-18_22-44-53_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"  # noqa: E501
     dir_name_rot = "./fl_runs/MNIST/rotation/incremental/all_classes_rot_65/update_datasets_run_2026-01-19_00-04-07_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"  # noqa: E501
 
@@ -104,4 +112,8 @@ if __name__ == "__main__":
         + f"Drifted Acc: {(averaged_accuracies_percentage[1][1]):.2%} | "
         + f"Benign Acc: {(averaged_accuracies_percentage[1][2]):.2%}"
     )
-    pass
+    return averaged_accuracies_percentage
+
+
+if __name__ == "__main__":
+    main()
