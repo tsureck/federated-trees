@@ -119,8 +119,9 @@ def run_simulation(
 
     base_save_path = (
         f"{constants.UpdateDataSettings.DATA_SAVE_PATH}/{fed_net.dataset_name}/"
-        + f"{fed_net.drift.drift_method}_cf_{drift_specifications['clients_fraction']}/"
-        + f"{fed_net.drift.drift_pattern}/{class_drift_info}/{type_of_run}_run_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_fedavg_{base_global_model_uuid}/"
+        + f"{fed_net.drift.drift_method}/"
+        + f"{fed_net.drift.drift_pattern}/{class_drift_info}_cf-{drift_specifications['clients_fraction']}/"
+        + f"{type_of_run}_run_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_fedavg_{base_global_model_uuid}/"
     )
 
     # Running the simulation
