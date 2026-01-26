@@ -6,10 +6,18 @@ from features import (
     get_features_from_update,
     read_updates_from_round,
 )
-from strategies.share_fc2 import classify_by_s_iqr, classify_by_s_kmeans, classify_by_s_lowerhalf_mad, classify_by_s_mad, classify_by_share_fc2_lowerhalf_mad, classify_by_share_fc2_threshold
+from strategies.mlp import MLPDefense, MLPDefenseConfig
+from strategies.share_fc2 import (
+    classify_by_s_iqr,
+    classify_by_s_kmeans,
+    classify_by_s_lowerhalf_mad,
+    classify_by_s_mad,
+    classify_by_share_fc2_lowerhalf_mad,
+    classify_by_share_fc2_threshold,
+)
 
 
-def analyze_client_update_round(round_idx: int, dir_name: str) -> float:
+def analyze_client_update_round(round_idx: int, dir_name: str, defence_mlp: th.nn.Module) -> float:
     """Analyze client updates for a given round index."""
     updates = read_updates_from_round(dir_name, round_idx)
 
@@ -32,7 +40,7 @@ def analyze_client_update_round(round_idx: int, dir_name: str) -> float:
         features[client_file] = feats
 
     # INSERT DEFENSE STRATEGIES HERE
-    return classify_malicious_drift_clients(features, updates)
+    return classify_malicious_drift_clients(features, updates, defence_mlp)
 
 
 def analyze_classification_performance(
@@ -62,7 +70,7 @@ def analyze_classification_performance(
     return total_accuracy, drifted_client_accuracy, benign_client_accuracy
 
 
-def classify_malicious_drift_clients(features: dict, updates: dict) -> float:
+def classify_malicious_drift_clients(features: dict, updates: dict, defence_mlp: th.nn.Module) -> float:
     """Classify clients as malicious or benign based on a defence strategy."""
     clients = [
         (upd["is_drifted_client"] and upd["drift_applied"] and upd["malicious"])
@@ -77,22 +85,29 @@ def classify_malicious_drift_clients(features: dict, updates: dict) -> float:
     # malicious = classify_by_s_kmeans(features)
     # malicious = classify_by_s_iqr(features)
     # malicious = classify_by_s_lowerhalf_mad(features)
-    malicious = classify_by_share_fc2_lowerhalf_mad(features)
+    # malicious = classify_by_share_fc2_lowerhalf_mad(features)
+    malicious = defence_mlp.classify_features(features)
 
     return analyze_classification_performance(clients, drifted_clients, malicious)
 
 
 def main():
     """Main function to analyze client updates across multiple rounds."""
-    dir_name_ls = "./fl_runs/MNIST/label_swapping/incremental/5-6_bidirectional/update_datasets_run_2026-01-18_22-44-53_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"  # noqa: E501
-    dir_name_rot = "./fl_runs/MNIST/rotation/incremental/all_classes_rot_65/update_datasets_run_2026-01-19_00-04-07_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"  # noqa: E501
+    dir_name_ls = "./fl_runs/MNIST/label_swapping/incremental/5-6_bidirectional_cf-0.5/update_datasets_run_2026-01-26_09-27-18_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"  # noqa: E501
+    dir_name_rot = "./fl_runs/MNIST/rotation/incremental/all_classes_rot_65_cf-0.5/update_datasets_run_2026-01-26_09-29-33_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"  # noqa: E501
+    # dir_name_ls = "./fl_runs/MNIST/label_swapping/incremental/5-6_bidirectional_cf-0.375/update_datasets_run_2026-01-26_09-36-13_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"  # noqa: E501
+    # dir_name_rot = "./fl_runs/MNIST/rotation/incremental/all_classes_rot_65_cf-0.375/update_datasets_run_2026-01-26_09-38-27_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"  # noqa: E501
+    # dir_name_ls = "./fl_runs/MNIST/label_swapping/incremental/5-6_bidirectional_cf-0.2/update_datasets_run_2026-01-26_09-45-04_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"  # noqa: E501
+    # dir_name_rot = "./fl_runs/MNIST/rotation/incremental/all_classes_rot_65_cf-0.2/update_datasets_run_2026-01-26_09-47-16_fedavg_cb1f65f9-7fdf-4b9d-a762-718ab4f021d1/updates/client_updates"  # noqa: E501
+
+    mlp = MLPDefense.load("defence/mlp_defense.pt")
 
     round_accuracies = ([], [])
 
     for i in range(40):
         print(f"--- Analyzing round {i} ---")
-        round_accuracies[0].append(analyze_client_update_round(i, dir_name_ls))
-        round_accuracies[1].append(analyze_client_update_round(i, dir_name_rot))
+        round_accuracies[0].append(analyze_client_update_round(i, dir_name_ls, mlp))
+        round_accuracies[1].append(analyze_client_update_round(i, dir_name_rot, mlp))
 
     averaged_accuracies = np.sum(round_accuracies, axis=1)
     averaged_accuracies_percentage = [
