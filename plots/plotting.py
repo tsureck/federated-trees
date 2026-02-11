@@ -270,6 +270,9 @@ def configure_and_save_plot(_plt, _x_label, _y_label, _title, _file_path, legend
     _plt.legend(handles=legend_hadles, loc='best', fontsize=15)
     # _plt.title(_title)
 
+    fig = _plt.gcf()
+    fig.subplots_adjust(left=0.1, right=0.95, bottom=0.18, top=0.95)
+
     # Save the plot as a high-quality PNG
     png_path = f"{_file_path}.png"
     print(f"PNG Path: {png_path}")
@@ -285,8 +288,8 @@ def configure_and_save_plot(_plt, _x_label, _y_label, _title, _file_path, legend
     # Save the plot as a PDF
     pdf_path = f"{_file_path}.pdf"
     if constants.AnalysisSettings.PLOTTING_FORMAT == "pgf":
-        _plt.savefig(pdf_path, format="pdf", backend='pgf', bbox_inches='tight', pad_inches=0.05)
+        _plt.savefig(pdf_path, format="pdf", backend="pgf", bbox_inches="tight") # , pad_inches=(0.02, 0.08))
     else:
-        _plt.savefig(png_path, dpi=300, bbox_inches='tight', pad_inches=0.05)  # Increase DPI for higher resolution
+        _plt.savefig(png_path, dpi=300, bbox_inches="tight", pad_inches=0.05)  # Increase DPI for higher resolution
     # Display the plot
     _plt.close()
