@@ -25,6 +25,7 @@ TestResults.xml
 __pycache__/
 logs/saved_logs/
 plots/saved_plots/
+plots/defence_stats*
 data/MNIST
 *.pth
 fl_runs/
