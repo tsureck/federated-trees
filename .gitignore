@@ -34,3 +34,4 @@ cifar-10-batches-py/
 
 scripts/output*
 *.pt
+*.csv
