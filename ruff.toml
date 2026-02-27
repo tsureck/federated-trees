@@ -1,0 +1,137 @@
+# The formatter wraps lines at a length of
+# Is ignored for link, noqa's, license identifiers, and single words
+line-length = 100
+
+# Number of spaces for an indent
+indent-width = 4
+
+# Do unsafe fixes for example with source.fixAll in settings.json
+unsafe-fixes = false
+
+# Assume Python 3.10
+target-version = "py310"
+
+# Exclude certain patterns or files from linting
+exclude = [
+  "CVS",
+  ".github/",
+  ".pylintrc",
+  "README.md",
+  "src/static/",
+  "data/mongo_dump/.bson",
+  "^\\."
+]
+
+[lint]
+select = [
+  # Main Rules
+  "F",        # PyFlakes
+  "D",        # pydocstyle
+  "I",        # isort
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",      # Pylint
+  "E",
+  "W",        # PyCodeStyle
+  "ANN",      # Annotations
+  "N",        # pep8-naming
+  "Q",        # Consistent quotations
+  "EM",       # flake8-error-message
+  "LOG",      # flake8-logging
+  "PT",       # pytest style
+  "G",        # flake8-logging-format
+]
+
+# Allow preview rules to be enabled
+preview = true
+
+# Rules to ignore
+extend-ignore = [
+  # pydocstyle
+  "D100",  # Missing docstring in public module
+  "D102",  # Missing docstring in public method
+  "D105",  # Missing docstring in magic methods
+  "D107",  # Missing docstring in __init__
+  "D200",  # One-line docstring should fit on one line
+  "D203",  # Missing blank line before class docstring
+  "D205",  # Blank line between summary and description
+  "D213",  # Multi-line docstring summary placement
+  "D415",  # First line punctuation
+
+  # Return type annotations
+  "ANN204",  # Missing return type for special method
+  "ANN201",  # Missing return type for public function
+
+  # Tryceratops
+  "TRY002",  # raise-vanilla-classes
+  "TRY003",  # Long messages outside exception class
+  "TRY300",  # Move return out of try
+
+  # Blind exceptions
+  "BLE001",
+
+  # TODOs
+  "TD",
+  "FIX002",
+
+  # Implicit namespace packages
+  "INP001",
+
+  # flake8-bandit
+  "S311",    # Use secrets for random numbers
+
+  # Boolean trap
+  "FBT001",
+  "FBT002",
+
+  # Copyright notice
+  "CPY",
+
+  # Pylint
+  "PLR6301", # Method could be function
+  "PLC0415", # Import not at top level
+
+  # Formatting
+  "COM812",  # Missing trailing comma
+]
+
+[lint.per-file-ignores]
+"test/" = [
+  "PLR0904", # Too many public methods
+  "PLR2004", # Magic numbers
+  "S101",    # Allow assert
+  "ARG002",  # Unused argument
+  "ANN001",  # Missing argument type annotation
+]
+
+[format]
+# Use double quotes in ruff format
+quote-style = "double"
+
+# Either tab or space
+indent-style = "space"
+
+[lint.flake8-quotes]
+docstring-quotes = "double"
+
+[lint.flake8-unused-arguments]
+# Allow args / kwargs
+ignore-variadic-names = true
+
+[lint.pycodestyle]
+# E501 reports lines longer than this
+max-line-length = 120
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.pylint]
+max-args = 7
+max-bool-expr = 5
+max-branches = 15
+max-locals = 15
+max-public-methods = 20
+max-returns = 6
+max-statements = 55
+max-nested-blocks = 10

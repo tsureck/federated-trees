@@ -116,7 +116,10 @@ class FederatedNetwork:
         for _round in range(self.num_training_rounds):
             # Add drift to the clients, if within the drift period
             self.drift.current_round = _round
-            if self.drift.drift_start_round <= _round <= self.drift.drift_end_round:
+            if self.drift.drift_pattern == constants.DriftPatterns.GRADUAL_REOCCURRING:
+                if self.drift.drift_start_round <= _round <= self.drift.drift_end_round:
+                    self.drift.is_drift = True
+            elif self.drift.drift_start_round <= _round:
                 self.drift.is_drift = True
 
                 # Modify the client groups if the drift is asynchronous
@@ -313,7 +316,8 @@ class FederatedNetwork:
         import os
 
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        torch.save(self.server_hierarchy[0][0].model.state_dict(), path)
+        save_path = "\\\\?\\" + os.path.abspath(path) if os.name == "nt" else path
+        torch.save(self.server_hierarchy[0][0].model.state_dict(), save_path)
 
     def load_model(self, path: str) -> None:
         """
@@ -325,7 +329,8 @@ class FederatedNetwork:
 
         if not os.path.exists(os.path.dirname(path)):
             raise FileNotFoundError(f"Model file not found at {path}")
-        weights = torch.load(path)
+        load_path = "\\\\?\\" + os.path.abspath(path) if os.name == "nt" else path
+        weights = torch.load(load_path)
         self.server_hierarchy[0][0].model.load_state_dict(weights)
 
 def get_latest_base_global_model_uuid(path_to_models: str) -> str | None:
